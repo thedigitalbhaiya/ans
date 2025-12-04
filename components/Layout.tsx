@@ -1,7 +1,7 @@
 
 import React, { useContext, useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ThemeContext, AuthContext } from '../App';
+import { ThemeContext, AuthContext, SchoolContext } from '../App';
 import { 
   LayoutDashboard, 
   CalendarDays, 
@@ -16,6 +16,7 @@ import {
   LogOut,
   FileText,
   ChevronLeft,
+  ChevronRight,
   ChevronDown,
   Check,
   IdCard
@@ -24,14 +25,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Theme } from '../types';
 import { Logo } from './Logo';
 
-// Reordered to put Profile in top 5 for mobile bottom nav (replacing Schedule)
+// Navigation Items
 const navItems = [
   { path: '/', label: 'Home', icon: LayoutDashboard },
   { path: '/attendance', label: 'Attendance', icon: CalendarDays },
-  { path: '/profile', label: 'Student ID', icon: IdCard }, // Replaced Schedule with Student ID/Profile
+  { path: '/profile', label: 'Student ID', icon: IdCard },
   { path: '/fees', label: 'Fees', icon: CreditCard },
   { path: '/results', label: 'Results', icon: Trophy },
-  { path: '/timetable', label: 'Schedule', icon: Clock }, // Moved Schedule here
+  { path: '/timetable', label: 'Schedule', icon: Clock },
   { path: '/circulars', label: 'Circulars', icon: Bell },
   { path: '/application', label: 'Application', icon: FileText },
 ];
@@ -39,12 +40,28 @@ const navItems = [
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { theme, toggleTheme } = useContext(ThemeContext);
   const { logout, currentStudent, allStudents, switchStudent, isLoggedIn } = useContext(AuthContext);
+  const { schoolName } = useContext(SchoolContext);
   const location = useLocation();
   const navigate = useNavigate();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const isHome = location.pathname === '/';
+
+  // Responsive sidebar logic
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768 && window.innerWidth < 1280) {
+        setIsCollapsed(true);
+      } else if (window.innerWidth >= 1280) {
+        setIsCollapsed(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    handleResize(); 
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -60,7 +77,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   }, []);
 
   const handleLogoClick = () => {
-    if (isLoggedIn) {
+    if (isLoggedIn && !isCollapsed) {
       setShowProfileMenu(!showProfileMenu);
     } else {
       navigate('/profile');
@@ -118,54 +135,71 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   return (
     <div className="flex h-screen w-full overflow-hidden bg-ios-bg dark:bg-black transition-colors duration-500 font-sans">
       {/* Sidebar for Desktop */}
-      <aside className="hidden md:flex flex-col w-72 h-full bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-2xl border-r border-ios-divider/20 dark:border-white/10 pt-8 pb-6 px-4 z-20 transition-colors duration-500">
-        
-        {/* Logo Section */}
-        <div className="flex items-center gap-3 px-2 mb-8 cursor-pointer" onClick={handleLogoClick}>
-            <Logo className="w-10 h-10" />
-            <div>
-              <h1 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight leading-none">Azim National</h1>
-              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">School App</span>
+      <aside 
+        className={`hidden md:flex flex-col h-full bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-2xl border-r border-ios-divider/20 dark:border-white/10 pt-8 pb-6 transition-all duration-300 z-20 relative ${
+          isCollapsed ? 'w-20 px-2' : 'w-72 px-4'
+        }`}
+      >
+        <button
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="absolute -right-3 top-9 p-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-slate-400 hover:text-ios-blue transition-colors shadow-sm z-30"
+        >
+          {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+        </button>
+
+        <div 
+          className={`flex items-center gap-3 mb-8 cursor-pointer transition-all ${isCollapsed ? 'justify-center px-0' : 'px-2'}`} 
+          onClick={handleLogoClick}
+        >
+            <Logo className="w-10 h-10 flex-shrink-0" />
+            <div className={`overflow-hidden transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
+              <h1 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight leading-none whitespace-nowrap">
+                {schoolName.split(' ')[0]}
+              </h1>
+              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">
+                School App
+              </span>
             </div>
         </div>
         
+        {/* User Profile */}
         <div className="relative mb-6" ref={menuRef}>
           {isLoggedIn ? (
-            <button 
-               onClick={() => setShowProfileMenu(!showProfileMenu)}
-               className="flex items-center gap-3 px-4 w-full group outline-none"
-            >
-              <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white dark:border-white/10 shadow-md ring-2 ring-slate-100 dark:ring-white/5 transition-transform group-hover:scale-105">
-                <img src={currentStudent.avatar} alt="Profile" className="w-full h-full object-cover" />
-              </div>
-              <div className="flex-1 min-w-0 text-left">
-                <span className="text-sm font-bold tracking-tight text-slate-900 dark:text-white block truncate group-hover:text-ios-blue transition-colors">
-                  {currentStudent.name}
-                </span>
-                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                  ID: {currentStudent.admissionNo}
-                </span>
-              </div>
-              <ChevronDown size={16} className={`text-slate-400 transition-transform ${showProfileMenu ? 'rotate-180' : ''}`} />
-            </button>
+              <button 
+                 onClick={() => isCollapsed ? navigate('/profile') : setShowProfileMenu(!showProfileMenu)}
+                 className={`flex items-center gap-3 w-full group outline-none transition-all ${isCollapsed ? 'justify-center px-0' : 'px-4'}`}
+              >
+                <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white dark:border-white/10 shadow-md ring-2 ring-slate-100 dark:ring-white/5 transition-transform group-hover:scale-105 flex-shrink-0">
+                  <img src={currentStudent.avatar} alt="Profile" className="w-full h-full object-cover" />
+                </div>
+                <div className={`flex-1 min-w-0 text-left transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
+                  <span className="text-sm font-bold tracking-tight text-slate-900 dark:text-white block truncate group-hover:text-ios-blue transition-colors">
+                    {currentStudent.name.split(' ')[0]}
+                  </span>
+                  <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                    ID: {currentStudent.admissionNo.split('/')[2] || '---'}
+                  </span>
+                </div>
+                {!isCollapsed && <ChevronDown size={16} className={`text-slate-400 transition-transform ${showProfileMenu ? 'rotate-180' : ''}`} />}
+              </button>
           ) : (
-             <Link to="/profile" className="flex items-center gap-3 px-4 w-full group">
-               <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center border-2 border-dashed border-slate-300 dark:border-white/20">
-                 <User size={24} className="text-slate-400" />
+             <Link to="/profile" className={`flex items-center gap-3 w-full group ${isCollapsed ? 'justify-center px-0' : 'px-4'}`}>
+               <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center border-2 border-dashed border-slate-300 dark:border-white/20 flex-shrink-0">
+                 <User size={20} className="text-slate-400" />
                </div>
-               <div className="text-left">
-                 <span className="text-sm font-bold text-slate-900 dark:text-white">Guest User</span>
-                 <span className="text-[10px] text-ios-blue dark:text-blue-400 font-bold">Login to Access</span>
+               <div className={`text-left transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
+                 <span className="text-sm font-bold text-slate-900 dark:text-white whitespace-nowrap">Guest</span>
+                 <span className="text-[10px] text-ios-blue dark:text-blue-400 font-bold block">Login</span>
                </div>
              </Link>
           )}
           
           <AnimatePresence>
-            {showProfileMenu && <ProfileSwitcherMenu />}
+            {showProfileMenu && !isCollapsed && <ProfileSwitcherMenu />}
           </AnimatePresence>
         </div>
 
-        <nav className="flex-1 space-y-1 overflow-y-auto no-scrollbar py-2">
+        <nav className="flex-1 space-y-2 overflow-y-auto no-scrollbar py-2">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
@@ -174,6 +208,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 key={item.path}
                 to={item.path}
                 className="relative group block"
+                title={isCollapsed ? item.label : undefined}
               >
                 {isActive && (
                   <motion.div
@@ -183,13 +218,15 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                     transition={{ type: "spring", stiffness: 300, damping: 30 }}
                   />
                 )}
-                <div className={`relative flex items-center gap-3 px-4 py-3 rounded-xl transition-colors duration-200 ${
+                <div className={`relative flex items-center gap-3 py-3 rounded-xl transition-colors duration-200 ${
                   isActive 
                     ? 'text-white' 
                     : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
-                }`}>
-                  <Icon size={20} className={isActive ? 'text-white' : 'text-slate-400 dark:text-slate-500 group-hover:text-current transition-colors'} strokeWidth={2} />
-                  <span className="font-medium">{item.label}</span>
+                } ${isCollapsed ? 'justify-center px-0' : 'px-4'}`}>
+                  <Icon size={22} className={`${isActive ? 'text-white' : 'text-slate-400 dark:text-slate-500 group-hover:text-current transition-colors'} flex-shrink-0`} strokeWidth={2} />
+                  <span className={`font-medium whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
+                    {item.label}
+                  </span>
                 </div>
               </Link>
             );
@@ -199,20 +236,13 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         <div className="space-y-2 pt-4 border-t border-ios-divider/20 dark:border-white/10">
           <button
             onClick={toggleTheme}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+            className={`w-full flex items-center gap-3 py-3 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors ${isCollapsed ? 'justify-center px-0' : 'px-4'}`}
           >
-            {theme === Theme.LIGHT ? <Moon size={20} /> : <Sun size={20} />}
-            <span className="font-medium">{theme === Theme.LIGHT ? 'Dark Mode' : 'Light Mode'}</span>
+            {theme === Theme.LIGHT ? <Moon size={22} /> : <Sun size={22} />}
+            <span className={`font-medium whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
+              {theme === Theme.LIGHT ? 'Dark Mode' : 'Light Mode'}
+            </span>
           </button>
-          {isLoggedIn && (
-            <button 
-              onClick={logout}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-ios-red/80 hover:bg-ios-red/10 transition-colors"
-            >
-              <LogOut size={20} />
-              <span className="font-medium">Sign Out</span>
-            </button>
-          )}
         </div>
       </aside>
 
@@ -223,25 +253,25 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
            {isHome ? (
              <div className="relative" ref={menuRef}>
                {isLoggedIn ? (
-                 <button 
-                    onClick={() => setShowProfileMenu(!showProfileMenu)}
-                    className="flex items-center gap-3 active:opacity-80 transition-opacity"
-                 >
-                   <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden border border-slate-100 dark:border-white/10 shadow-sm relative">
-                     <img src={currentStudent.avatar} alt="Profile" className="w-full h-full object-cover" />
-                   </div>
-                   <div className="text-left">
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm font-bold text-slate-900 dark:text-white block leading-none">
-                          {currentStudent.name.split(' ')[0]}
+                   <button 
+                      onClick={() => setShowProfileMenu(!showProfileMenu)}
+                      className="flex items-center gap-3 active:opacity-80 transition-opacity"
+                   >
+                     <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden border border-slate-100 dark:border-white/10 shadow-sm relative">
+                       <img src={currentStudent.avatar} alt="Profile" className="w-full h-full object-cover" />
+                     </div>
+                     <div className="text-left">
+                        <div className="flex items-center gap-1">
+                          <span className="text-sm font-bold text-slate-900 dark:text-white block leading-none">
+                            {currentStudent.name.split(' ')[0]}
+                          </span>
+                          <ChevronDown size={12} className="text-slate-400" />
+                        </div>
+                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block leading-none mt-1 uppercase tracking-wider">
+                          Class {currentStudent.class}
                         </span>
-                        <ChevronDown size={12} className="text-slate-400" />
-                      </div>
-                      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block leading-none mt-1 uppercase tracking-wider">
-                        Class {currentStudent.class}
-                      </span>
-                   </div>
-                 </button>
+                     </div>
+                   </button>
                ) : (
                  <Link to="/profile" className="flex items-center gap-3">
                     <Logo className="w-10 h-10" />
@@ -278,7 +308,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         <div className="max-w-6xl mx-auto p-6 pb-32 md:pb-12 md:p-10">
           <AnimatePresence mode="wait">
             <motion.div
-              key={location.pathname + currentStudent.admissionNo}
+              key={location.pathname + (isLoggedIn ? currentStudent.admissionNo : 'guest')}
               initial={{ opacity: 0, y: 15, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.98 }}
@@ -290,7 +320,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         </div>
       </main>
 
-      {/* Bottom Nav for Mobile - Frosted Glass */}
+      {/* Bottom Nav for Mobile */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/85 dark:bg-[#1C1C1E]/90 backdrop-blur-2xl border-t border-ios-divider/20 dark:border-white/10 pb-safe pt-2 px-6 shadow-2xl">
         <div className="flex justify-between items-center h-16">
           {navItems.slice(0, 5).map((item) => {

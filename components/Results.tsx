@@ -2,12 +2,12 @@
 import React, { useState, useContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trophy, ChevronDown, Filter, LogIn } from 'lucide-react';
-import { examResultsData } from '../data';
-import { AuthContext } from '../App';
+import { AuthContext, SchoolContext } from '../App';
 import { Link } from 'react-router-dom';
 
 export const Results: React.FC = () => {
   const { currentStudent, isLoggedIn } = useContext(AuthContext);
+  const { examResults } = useContext(SchoolContext);
   const [selectedTerm, setSelectedTerm] = useState("Mid-Term");
   const [selectedSession, setSelectedSession] = useState("2025-26");
 
@@ -28,7 +28,7 @@ export const Results: React.FC = () => {
       );
   }
 
-  const currentResults = examResultsData[selectedTerm as keyof typeof examResultsData] || [];
+  const currentResults = examResults[selectedTerm as keyof typeof examResults] || [];
 
   return (
     <div className="space-y-6">

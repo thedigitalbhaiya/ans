@@ -14,8 +14,9 @@ import { Gallery } from './components/Gallery';
 import { Feedback } from './components/Feedback';
 import { Application } from './components/Application';
 import { Admission } from './components/Admission';
+
 import { Theme, Student } from './types';
-import { studentsList } from './data';
+import { studentsList, dailyNotice as initialNotice, examResultsData as initialResults } from './data';
 
 // Theme Context
 export const ThemeContext = React.createContext<{
@@ -43,12 +44,26 @@ export const AuthContext = React.createContext<{
   switchStudent: () => {},
 });
 
+// School Context
+export const SchoolContext = React.createContext<{
+  schoolName: string;
+  dailyNotice: typeof initialNotice;
+  showBirthdayWidget: boolean;
+  examResults: typeof initialResults;
+}>({
+  schoolName: 'Azim National School',
+  dailyNotice: initialNotice,
+  showBirthdayWidget: true,
+  examResults: initialResults,
+});
+
 const AppContent: React.FC = () => {
   const location = useLocation();
-  
+
   return (
     <Layout>
       <Routes location={location} key={location.pathname}>
+        {/* Student Routes */}
         <Route path="/" element={<Dashboard />} />
         <Route path="/attendance" element={<Attendance />} />
         <Route path="/homework" element={<Homework />} />
@@ -61,6 +76,7 @@ const AppContent: React.FC = () => {
         <Route path="/feedback" element={<Feedback />} />
         <Route path="/application" element={<Application />} />
         <Route path="/admission" element={<Admission />} />
+        
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>
@@ -68,7 +84,7 @@ const AppContent: React.FC = () => {
 };
 
 export default function App() {
-  const [theme, setTheme] = useState<Theme>(Theme.LIGHT); // Default to light
+  const [theme, setTheme] = useState<Theme>(Theme.LIGHT);
   
   // Persistent Login State
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
@@ -78,10 +94,15 @@ export default function App() {
   // Manage Current Student
   const [currentStudent, setCurrentStudent] = useState<Student>(studentsList[0]);
 
+  // School Settings State
+  const [schoolName] = useState('Azim National School');
+  const [dailyNotice] = useState(initialNotice);
+  const [showBirthdayWidget] = useState(true);
+  const [examResults] = useState(initialResults);
+
   const login = () => {
     localStorage.setItem('isLoggedIn', 'true');
     setIsLoggedIn(true);
-    // Reset to first student on login
     setCurrentStudent(studentsList[0]);
   };
 
@@ -114,13 +135,19 @@ export default function App() {
       logout, 
       currentStudent, 
       allStudents: studentsList,
-      switchStudent
+      switchStudent,
     }}>
       <ThemeContext.Provider value={{ theme, toggleTheme }}>
-        <Router>
-           <AppContent />
-           {/* Forced Login Overlay Removed - Users can now browse freely */}
-        </Router>
+        <SchoolContext.Provider value={{
+          schoolName,
+          dailyNotice,
+          showBirthdayWidget,
+          examResults,
+        }}>
+          <Router>
+             <AppContent />
+          </Router>
+        </SchoolContext.Provider>
       </ThemeContext.Provider>
     </AuthContext.Provider>
   );

@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Phone, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Phone, ArrowRight, ShieldCheck, Lock, User } from 'lucide-react';
 import { Logo } from './Logo';
 
 interface LoginProps {
@@ -16,7 +16,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
   const handleSendOTP = (e: React.FormEvent) => {
     e.preventDefault();
-    if (mobile.length >= 10) {
+    if (mobile.length >= 10) { 
       setIsLoading(true);
       setTimeout(() => {
         setIsLoading(false);
@@ -38,7 +38,10 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
   return (
     <div className="w-full overflow-hidden">
-      <div className="bg-gradient-to-br from-ios-blue to-indigo-900 p-8 text-center relative overflow-hidden rounded-[2rem] m-2">
+      <div className={`
+        bg-gradient-to-br p-8 text-center relative overflow-hidden rounded-[2rem] m-2 transition-colors duration-500
+        from-ios-blue to-indigo-900
+      `}>
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-8 -mt-8 blur-2xl"></div>
           <div className="absolute bottom-0 left-0 w-24 h-24 bg-black/20 rounded-full -ml-8 -mb-8 blur-xl"></div>
           
@@ -47,7 +50,9 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                <Logo className="w-full h-full" />
             </div>
             <h1 className="text-xl font-extrabold text-white tracking-tight">Azim National School</h1>
-            <p className="text-blue-100 text-[10px] mt-1 font-bold tracking-widest uppercase">Bahadurganj</p>
+            <p className="text-blue-100 text-[10px] mt-1 font-bold tracking-widest uppercase">
+              Bahadurganj
+            </p>
           </div>
       </div>
 
@@ -61,7 +66,9 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 exit={{ opacity: 0, x: 20 }}
               >
                 <div className="text-center mb-6">
-                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">Login</h2>
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                    Login
+                  </h2>
                   <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
                     Enter your mobile number to continue.
                   </p>
@@ -69,7 +76,9 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
                 <form onSubmit={handleSendOTP} className="space-y-4">
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Mobile Number</label>
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">
+                       Mobile Number
+                    </label>
                     <div className="relative">
                       <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                       <input 
@@ -89,9 +98,10 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                     disabled={isLoading}
                     className="w-full bg-slate-900 dark:bg-white text-white dark:text-black py-4 rounded-2xl font-bold text-lg shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 mt-4 disabled:opacity-70 disabled:scale-100"
                   >
-                    {isLoading ? 'Sending...' : 'Get OTP'} {!isLoading && <ArrowRight size={20} />}
+                    {isLoading ? 'Processing...' : 'Get OTP'} {!isLoading && <ArrowRight size={20} />}
                   </button>
                 </form>
+
               </motion.div>
             ) : (
               <motion.div
@@ -109,7 +119,9 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
                 <form onSubmit={handleVerifyOTP} className="space-y-4">
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">One Time Password</label>
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">
+                      One Time Password
+                    </label>
                     <div className="relative">
                       <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                       <input 
@@ -129,7 +141,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                     disabled={isLoading}
                     className="w-full bg-slate-900 dark:bg-white text-white dark:text-black py-4 rounded-2xl font-bold text-lg shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 mt-4 disabled:opacity-70 disabled:scale-100"
                   >
-                    {isLoading ? 'Verifying...' : 'Verify'} {!isLoading && <ArrowRight size={20} />}
+                    {isLoading ? 'Verifying...' : 'Verify & Login'} {!isLoading && <ArrowRight size={20} />}
                   </button>
                   
                   <div className="text-center mt-4">

@@ -29,11 +29,11 @@ import {
   Wallet
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell } from 'recharts';
 import { Link, useNavigate } from 'react-router-dom';
 import { Logo } from './Logo';
-import { attendanceData, noticesList, birthdays, dailyNotice, timetableSchedule } from '../data';
-import { AuthContext } from '../App';
+import { attendanceData, noticesList, birthdays, timetableSchedule } from '../data';
+import { AuthContext, SchoolContext } from '../App';
 
 const apps = [
   { name: 'Fees', icon: CreditCard, path: '/fees', color: 'bg-green-600' },
@@ -49,6 +49,7 @@ const apps = [
 
 export const Dashboard: React.FC = () => {
   const { currentStudent, isLoggedIn } = useContext(AuthContext);
+  const { dailyNotice, showBirthdayWidget, schoolName } = useContext(SchoolContext);
   const [currentBirthdayIndex, setCurrentBirthdayIndex] = useState(0);
   const [currentTime, setCurrentTime] = useState(new Date());
   const navigate = useNavigate();
@@ -154,7 +155,7 @@ export const Dashboard: React.FC = () => {
                  <span className="px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-blue-100 text-[10px] font-bold tracking-widest uppercase border border-white/10 mb-2 inline-block">
                     Bahadurganj
                  </span>
-                 <h1 className="text-2xl md:text-4xl font-extrabold text-white tracking-tight leading-tight">Azim National School</h1>
+                 <h1 className="text-2xl md:text-4xl font-extrabold text-white tracking-tight leading-tight">{schoolName}</h1>
                  <p className="text-blue-200 text-xs md:text-sm font-medium mt-1">Affiliated to CBSE, Delhi</p>
                  <p className="text-yellow-300 text-xs md:text-sm font-bold mt-1 tracking-wide">AFFILIATION NO. 331140</p>
               </div>
@@ -194,7 +195,7 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. Daily Bulletin */}
+      {/* 3. Daily Bulletin (Live Data) */}
       <motion.div
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
@@ -221,13 +222,13 @@ export const Dashboard: React.FC = () => {
 
       {/* Guest vs Student View for Personal Widgets */}
       {isLoggedIn ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className={`grid grid-cols-1 md:grid-cols-3 gap-6`}>
           {/* Next Class Widget */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="md:col-span-2 bg-white dark:bg-[#1C1C1E] rounded-[2rem] p-8 shadow-sm border border-slate-100 dark:border-white/5 relative overflow-hidden flex flex-col justify-between min-h-[220px]"
+            className={`md:col-span-2 bg-white dark:bg-[#1C1C1E] rounded-[2rem] p-8 shadow-sm border border-slate-100 dark:border-white/5 relative overflow-hidden flex flex-col justify-between min-h-[220px] ${!showBirthdayWidget ? 'md:col-span-3' : ''}`}
           >
                <div className="flex justify-between items-start z-10">
                  <div className="flex items-center gap-2 bg-ios-blue/10 px-3 py-1 rounded-full">
@@ -261,42 +262,44 @@ export const Dashboard: React.FC = () => {
           </motion.div>
 
           {/* Birthday Widget */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-gradient-to-br from-pink-500 to-rose-500 rounded-[2rem] p-6 shadow-lg shadow-pink-500/20 text-white relative overflow-hidden flex flex-col"
-          >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 rounded-full -mr-8 -mt-8 blur-2xl"></div>
-            
-            <div className="flex items-center gap-2 mb-4 relative z-10">
-              <PartyPopper size={24} className="text-white" />
-              <h3 className="text-lg font-bold">Birthdays</h3>
-            </div>
-            
-            <div className="flex-1 flex flex-col items-center justify-center text-center relative z-10 w-full">
-              <AnimatePresence mode="wait">
-                 <motion.div
-                   key={currentBirthdayIndex}
-                   initial={{ opacity: 0, x: 20 }}
-                   animate={{ opacity: 1, x: 0 }}
-                   exit={{ opacity: 0, x: -20 }}
-                   transition={{ duration: 0.4 }}
-                   className="flex flex-col items-center w-full"
-                 >
-                   <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-md border-2 border-white/30 p-1 mb-3 shadow-lg">
-                     <img 
-                        src={birthdays[currentBirthdayIndex].image} 
-                        className="w-full h-full rounded-full object-cover" 
-                        alt="Birthday" 
-                     />
-                   </div>
-                   <h4 className="font-bold text-xl truncate w-full">{birthdays[currentBirthdayIndex].name}</h4>
-                   <p className="text-pink-100 text-sm">Class {birthdays[currentBirthdayIndex].class} • {birthdays[currentBirthdayIndex].date}</p>
-                 </motion.div>
-              </AnimatePresence>
-            </div>
-          </motion.div>
+          {showBirthdayWidget && (
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-gradient-to-br from-pink-500 to-rose-500 rounded-[2rem] p-6 shadow-lg shadow-pink-500/20 text-white relative overflow-hidden flex flex-col"
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 rounded-full -mr-8 -mt-8 blur-2xl"></div>
+              
+              <div className="flex items-center gap-2 mb-4 relative z-10">
+                <PartyPopper size={24} className="text-white" />
+                <h3 className="text-lg font-bold">Birthdays</h3>
+              </div>
+              
+              <div className="flex-1 flex flex-col items-center justify-center text-center relative z-10 w-full">
+                <AnimatePresence mode="wait">
+                   <motion.div
+                     key={currentBirthdayIndex}
+                     initial={{ opacity: 0, x: 20 }}
+                     animate={{ opacity: 1, x: 0 }}
+                     exit={{ opacity: 0, x: -20 }}
+                     transition={{ duration: 0.4 }}
+                     className="flex flex-col items-center w-full"
+                   >
+                     <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-md border-2 border-white/30 p-1 mb-3 shadow-lg">
+                       <img 
+                          src={birthdays[currentBirthdayIndex].image} 
+                          className="w-full h-full rounded-full object-cover" 
+                          alt="Birthday" 
+                       />
+                     </div>
+                     <h4 className="font-bold text-xl truncate w-full">{birthdays[currentBirthdayIndex].name}</h4>
+                     <p className="text-pink-100 text-sm">Class {birthdays[currentBirthdayIndex].class} • {birthdays[currentBirthdayIndex].date}</p>
+                   </motion.div>
+                </AnimatePresence>
+              </div>
+            </motion.div>
+          )}
         </div>
       ) : (
         /* Guest View - Locked Personal Widgets */
@@ -358,27 +361,26 @@ export const Dashboard: React.FC = () => {
              </div>
              <div className="flex items-center gap-6">
                <div className="w-32 h-32 relative flex-shrink-0">
-                 <ResponsiveContainer width="100%" height="100%">
-                   <PieChart>
-                     <Pie
-                       data={dynamicAttendanceData}
-                       cx="50%"
-                       cy="50%"
-                       innerRadius={45}
-                       outerRadius={55}
-                       paddingAngle={5}
-                       cornerRadius={4}
-                       dataKey="value"
-                       startAngle={90}
-                       endAngle={-270}
-                       stroke="none"
-                     >
-                        {dynamicAttendanceData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                     </Pie>
-                   </PieChart>
-                 </ResponsiveContainer>
+                 {/* Fixed dimensions for PieChart to resolve resize error in fixed container */}
+                 <PieChart width={128} height={128}>
+                   <Pie
+                     data={dynamicAttendanceData}
+                     cx="50%"
+                     cy="50%"
+                     innerRadius={45}
+                     outerRadius={55}
+                     paddingAngle={5}
+                     cornerRadius={4}
+                     dataKey="value"
+                     startAngle={90}
+                     endAngle={-270}
+                     stroke="none"
+                   >
+                      {dynamicAttendanceData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                   </Pie>
+                 </PieChart>
                  <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
                    <span className="text-xl font-bold text-slate-900 dark:text-white">{currentStudent.stats.attendance}</span>
                  </div>
@@ -468,82 +470,115 @@ export const Dashboard: React.FC = () => {
         )}
       </motion.div>
 
+      {/* NEW: Quick Call Actions */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.48 }}
+        className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4"
+      >
+        <a 
+          href="tel:+919430646481" 
+          className="relative overflow-hidden bg-[#25D366] text-white p-5 rounded-[1.8rem] shadow-lg shadow-green-500/20 flex items-center justify-center gap-4 active:scale-95 transition-transform group"
+        >
+            <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-8 -mt-8 blur-2xl"></div>
+            <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Phone size={24} fill="currentColor" className="text-white" />
+            </div>
+            <div className="text-left">
+              <p className="text-[11px] font-bold text-green-50 uppercase tracking-widest opacity-90">Reception</p>
+              <p className="text-xl font-bold leading-none mt-0.5">Call Office</p>
+            </div>
+        </a>
+        <a 
+          href="tel:+919430646481" 
+          className="relative overflow-hidden bg-[#1B1464] text-white p-5 rounded-[1.8rem] shadow-lg shadow-blue-900/20 flex items-center justify-center gap-4 active:scale-95 transition-transform group"
+        >
+            <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-8 -mt-8 blur-2xl"></div>
+            <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+              <User size={24} fill="currentColor" className="text-white" />
+            </div>
+            <div className="text-left">
+              <p className="text-[11px] font-bold text-indigo-100 uppercase tracking-widest opacity-90">Management</p>
+              <p className="text-xl font-bold leading-none mt-0.5">Call Principal</p>
+            </div>
+        </a>
+      </motion.div>
+
       {/* 4. School Contact Section */}
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
-        className="bg-slate-900 dark:bg-black rounded-[2.5rem] p-8 md:p-10 text-white relative overflow-hidden mt-8"
+        className="bg-[#0F172A] dark:bg-black rounded-[2.5rem] p-8 md:p-10 text-white relative overflow-hidden"
       >
-        <div className="absolute top-0 right-0 w-96 h-96 bg-ios-blue/20 rounded-full blur-[100px] pointer-events-none"></div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 relative z-10">
-          <div>
-            <h3 className="text-2xl font-bold mb-6">Contact Information</h3>
-            <div className="space-y-6">
-              <div className="flex items-start gap-4">
-                 <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center flex-shrink-0">
-                   <MapPin size={24} className="text-blue-400" />
-                 </div>
-                 <div>
-                   <p className="text-xs text-slate-400 uppercase tracking-widest font-bold mb-1">Address</p>
-                   <p className="font-medium leading-relaxed text-slate-200">
-                     Azim National School<br/>
+        {/* Subtle background glow */}
+        <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/10 rounded-full blur-[80px] pointer-events-none -mr-20 -mt-20"></div>
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/10 rounded-full blur-[80px] pointer-events-none -ml-20 -mb-20"></div>
+
+        <div className="relative z-10">
+          <h3 className="text-2xl font-bold mb-8 tracking-tight">Contact Information</h3>
+          
+          <div className="space-y-8">
+             {/* Address */}
+             <div className="flex items-start gap-5">
+                <div className="w-14 h-14 rounded-2xl bg-[#1E293B] flex items-center justify-center flex-shrink-0 shadow-inner border border-white/5">
+                   <MapPin size={26} className="text-blue-500" />
+                </div>
+                <div className="pt-1">
+                   <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-1">Address</p>
+                   <p className="text-lg font-medium leading-relaxed text-slate-100">
+                     {schoolName}<br/>
                      Bahadurganj, Kishanganj<br/>
                      Bihar, India - 855101
                    </p>
-                 </div>
-              </div>
-              
-              <div className="flex items-start gap-4">
-                 <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center flex-shrink-0">
-                   <Phone size={24} className="text-green-400" />
-                 </div>
-                 <div>
-                   <p className="text-xs text-slate-400 uppercase tracking-widest font-bold mb-1">Phone</p>
-                   <p className="font-medium text-slate-200">+91 94306 46481</p>
-                   <p className="text-sm text-slate-500 mt-0.5">Mon - Sat, 9am - 4pm</p>
-                 </div>
-              </div>
-
-              <div className="flex items-start gap-4">
-                 <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center flex-shrink-0">
-                   <Mail size={24} className="text-orange-400" />
-                 </div>
-                 <div>
-                   <p className="text-xs text-slate-400 uppercase tracking-widest font-bold mb-1">Email</p>
-                   <p className="font-medium text-slate-200">azimnationalschool@gmail.com</p>
-                 </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-col justify-between space-y-8">
-             <div>
-                <h3 className="text-xl font-bold mb-6">Office Hours</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center border-b border-white/10 pb-3">
-                    <span className="text-slate-300 flex items-center gap-2"><Clock3 size={16} /> Monday - Saturday</span>
-                    <span className="font-bold">08:00 AM - 02:00 PM</span>
-                  </div>
-                  <div className="flex justify-between items-center border-b border-white/10 pb-3">
-                    <span className="text-slate-300 flex items-center gap-2"><Clock3 size={16} /> Sunday</span>
-                    <span className="text-red-400 font-bold">Closed</span>
-                  </div>
                 </div>
              </div>
 
-             <div className="space-y-4">
-               <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Connect With Us</h3>
-               <div className="flex gap-4">
-                  <a href="https://www.facebook.com/profile.php?id=100057429640301" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-3 bg-[#1877F2] hover:bg-[#155fc4] transition-colors rounded-xl font-bold text-sm">
-                    <Facebook size={18} /> Facebook
-                  </a>
-                  <a href="https://saras.cbse.gov.in/SARAS/AffiliatedList/AfflicationDetails/331140" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-3 bg-[#CB6CE6] hover:bg-[#b053cb] transition-colors rounded-xl font-bold text-sm">
-                    <Globe size={18} /> CBSE Affiliation
-                  </a>
-               </div>
+             {/* Phone */}
+             <div className="flex items-start gap-5">
+                <div className="w-14 h-14 rounded-2xl bg-[#1E293B] flex items-center justify-center flex-shrink-0 shadow-inner border border-white/5">
+                   <Phone size={26} className="text-green-500" />
+                </div>
+                <div className="pt-1">
+                   <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-1">Phone</p>
+                   <p className="text-xl font-bold text-white">+91 94306 46481</p>
+                   <p className="text-sm text-slate-500 mt-1">Mon - Sat, 9am - 4pm</p>
+                </div>
+             </div>
+
+             {/* Email */}
+             <div className="flex items-start gap-5">
+                <div className="w-14 h-14 rounded-2xl bg-[#1E293B] flex items-center justify-center flex-shrink-0 shadow-inner border border-white/5">
+                   <Mail size={26} className="text-orange-500" />
+                </div>
+                <div className="pt-1">
+                   <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-1">Email</p>
+                   <p className="text-lg font-medium text-white break-all">azimnationalschool@gmail.com</p>
+                </div>
              </div>
           </div>
+
+          <div className="mt-10 pt-8 border-t border-white/10">
+             <h4 className="text-lg font-bold mb-4">Office Hours</h4>
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-[#1E293B] p-4 rounded-2xl border border-white/5 flex items-center justify-between">
+                   <div className="flex items-center gap-3">
+                      <Clock3 size={20} className="text-slate-400" />
+                      <span className="text-slate-200 font-medium">Mon - Sat</span>
+                   </div>
+                   <span className="font-bold text-white">08:00 - 02:00</span>
+                </div>
+                <div className="bg-[#1E293B] p-4 rounded-2xl border border-white/5 flex items-center justify-between opacity-75">
+                   <div className="flex items-center gap-3">
+                      <Clock3 size={20} className="text-slate-400" />
+                      <span className="text-slate-200 font-medium">Sunday</span>
+                   </div>
+                   <span className="font-bold text-red-400">Closed</span>
+                </div>
+             </div>
+          </div>
+          
         </div>
       </motion.div>
     </div>
