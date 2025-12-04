@@ -1,0 +1,279 @@
+
+import React, { useState, useContext } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Download, CreditCard, CheckCircle2, Clock, X, Loader2, ShieldCheck, LogIn, Smartphone } from 'lucide-react';
+import { feeHistory } from '../data';
+import { AuthContext } from '../App';
+import { Link } from 'react-router-dom';
+
+export const Fees: React.FC = () => {
+  const { isLoggedIn } = useContext(AuthContext);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'card' | 'upi'>('upi');
+  
+  // Payment Form State
+  const [amount, setAmount] = useState('4500');
+  const [cardNumber, setCardNumber] = useState('');
+  const [expiry, setExpiry] = useState('');
+  const [cvv, setCvv] = useState('');
+  const [upiId, setUpiId] = useState('');
+
+  const handlePayment = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsProcessing(true);
+    setTimeout(() => {
+      setIsProcessing(false);
+      setPaymentSuccess(true);
+      setTimeout(() => {
+        setPaymentSuccess(false);
+        setShowPaymentModal(false);
+        // Reset form
+        setCardNumber('');
+        setExpiry('');
+        setCvv('');
+        setUpiId('');
+      }, 2500);
+    }, 2000);
+  };
+
+  if (!isLoggedIn) {
+    return (
+       <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="w-24 h-24 bg-slate-100 dark:bg-white/5 rounded-full flex items-center justify-center mb-6 text-slate-400">
+             <CreditCard size={40} />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Fee Details Locked</h2>
+          <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-xs mx-auto">
+             Please login to view your outstanding dues and payment history.
+          </p>
+          <Link to="/profile" className="mt-8 px-8 py-3 bg-slate-900 dark:bg-white text-white dark:text-black font-bold rounded-xl flex items-center gap-2 hover:scale-105 transition-transform">
+             <LogIn size={20} /> Login Now
+          </Link>
+       </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 relative">
+      <div className="flex flex-col md:flex-row justify-between items-end gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Fee Status</h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">Manage your tuition payments</p>
+        </div>
+        <button 
+          onClick={() => setShowPaymentModal(true)}
+          className="bg-slate-900 dark:bg-white text-white dark:text-black px-6 py-3 rounded-xl font-semibold shadow-lg shadow-slate-900/20 active:scale-95 transition-all flex items-center gap-2"
+        >
+          <CreditCard size={18} />
+          Pay Online
+        </button>
+      </div>
+
+      {/* Outstanding Card */}
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-gradient-to-br from-ios-red to-rose-600 rounded-[2rem] p-8 text-white shadow-xl shadow-red-500/20 relative overflow-hidden"
+      >
+        <div className="absolute right-0 top-0 w-64 h-64 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl"></div>
+        <div className="relative z-10">
+          <p className="text-red-100 font-medium mb-1 uppercase tracking-wider text-xs">Total Outstanding</p>
+          <h2 className="text-4xl font-bold mb-6">₹ 4,500</h2>
+          <div className="flex items-center gap-2 text-sm bg-white/20 w-fit px-3 py-1.5 rounded-lg backdrop-blur-md">
+            <Clock size={16} />
+            <span>Due by 10th October 2025</span>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* History List */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-bold text-slate-900 dark:text-white px-2">Payment History</h3>
+        {feeHistory.map((item, index) => (
+          <motion.div
+            key={item.id}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.1 }}
+            className="bg-white dark:bg-[#1C1C1E] p-5 rounded-[1.5rem] shadow-sm border border-slate-100 dark:border-white/5 flex items-center justify-between group"
+          >
+            <div className="flex items-center gap-4">
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
+                item.status === 'Paid' ? 'bg-green-100 text-green-600 dark:bg-green-500/20' : 'bg-red-100 text-red-600 dark:bg-red-500/20'
+              }`}>
+                {item.status === 'Paid' ? <CheckCircle2 size={24} /> : <Clock size={24} />}
+              </div>
+              <div>
+                <h4 className="font-bold text-slate-900 dark:text-white">{item.month}</h4>
+                <p className="text-sm text-slate-500 dark:text-slate-400">{item.date} • {item.invoice}</p>
+              </div>
+            </div>
+            
+            <div className="text-right">
+               <p className="font-bold text-slate-900 dark:text-white">{item.amount}</p>
+               <button className="text-ios-blue text-sm font-medium mt-1 flex items-center gap-1 hover:underline">
+                 <Download size={14} /> Invoice
+               </button>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Payment Modal */}
+      <AnimatePresence>
+        {showPaymentModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowPaymentModal(false)}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            />
+            
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-sm bg-white dark:bg-[#1C1C1E] rounded-[2rem] shadow-2xl overflow-hidden"
+            >
+              {paymentSuccess ? (
+                <div className="p-10 flex flex-col items-center justify-center text-center h-[400px]">
+                  <motion.div 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="w-24 h-24 bg-green-100 dark:bg-green-500/20 rounded-full flex items-center justify-center text-green-500 mb-6"
+                  >
+                    <CheckCircle2 size={48} strokeWidth={3} />
+                  </motion.div>
+                  <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Payment Successful!</h3>
+                  <p className="text-slate-500 dark:text-slate-400">Transaction ID: #TXN-{Math.floor(Math.random()*100000)}</p>
+                  <p className="text-slate-900 dark:text-white font-bold text-xl mt-4">₹ {amount}</p>
+                </div>
+              ) : (
+                <>
+                  <div className="bg-ios-blue p-6 pb-20 text-white relative">
+                    <button 
+                      onClick={() => setShowPaymentModal(false)}
+                      className="absolute top-4 right-4 p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
+                    >
+                      <X size={16} />
+                    </button>
+                    <h3 className="text-lg font-bold mb-1">Fee Payment</h3>
+                    <p className="text-blue-200 text-sm">Secure Gateway</p>
+                  </div>
+                  
+                  <div className="px-6 -mt-12">
+                     <div className="bg-white dark:bg-[#2C2C2E] p-4 rounded-2xl shadow-lg border border-slate-100 dark:border-white/5 mb-6 text-center">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide font-bold">Paying For</p>
+                        <p className="text-sm font-semibold text-slate-900 dark:text-white">Tuition Fee - Oct 2025</p>
+                        <h2 className="text-3xl font-bold text-slate-900 dark:text-white mt-1">₹ {amount}</h2>
+                     </div>
+                  </div>
+                  
+                  <form onSubmit={handlePayment} className="px-6 pb-6 space-y-5">
+                    
+                    {/* Payment Method Tabs */}
+                    <div className="flex bg-slate-100 dark:bg-black/40 p-1 rounded-xl">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('upi')}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all ${paymentMethod === 'upi' ? 'bg-white dark:bg-[#1C1C1E] shadow-sm text-slate-900 dark:text-white' : 'text-slate-500'}`}
+                      >
+                        <Smartphone size={16} /> UPI
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('card')}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all ${paymentMethod === 'card' ? 'bg-white dark:bg-[#1C1C1E] shadow-sm text-slate-900 dark:text-white' : 'text-slate-500'}`}
+                      >
+                        <CreditCard size={16} /> Card
+                      </button>
+                    </div>
+
+                    <div className="min-h-[140px]">
+                      {paymentMethod === 'upi' ? (
+                         <div className="space-y-4">
+                           <div className="space-y-2">
+                              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">UPI ID</label>
+                              <input 
+                                type="text" 
+                                required 
+                                placeholder="username@upi" 
+                                className="w-full p-3 bg-slate-50 dark:bg-black/20 rounded-xl border-none outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white font-medium"
+                                value={upiId}
+                                onChange={(e) => setUpiId(e.target.value)}
+                              />
+                           </div>
+                           <p className="text-xs text-slate-400 text-center">Google Pay, PhonePe, Paytm supported</p>
+                         </div>
+                      ) : (
+                         <div className="space-y-4">
+                           <div className="space-y-2">
+                              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Card Number</label>
+                              <input 
+                                type="text" 
+                                required 
+                                placeholder="0000 0000 0000 0000" 
+                                className="w-full p-3 bg-slate-50 dark:bg-black/20 rounded-xl border-none outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white font-mono"
+                                value={cardNumber}
+                                onChange={(e) => setCardNumber(e.target.value)}
+                              />
+                           </div>
+                           <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Expiry</label>
+                                <input 
+                                  type="text" 
+                                  required 
+                                  placeholder="MM/YY" 
+                                  className="w-full p-3 bg-slate-50 dark:bg-black/20 rounded-xl border-none outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white font-mono"
+                                  value={expiry}
+                                  onChange={(e) => setExpiry(e.target.value)}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">CVV</label>
+                                <input 
+                                  type="password" 
+                                  required 
+                                  placeholder="123" 
+                                  maxLength={3}
+                                  className="w-full p-3 bg-slate-50 dark:bg-black/20 rounded-xl border-none outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white font-mono"
+                                  value={cvv}
+                                  onChange={(e) => setCvv(e.target.value)}
+                                />
+                              </div>
+                           </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <button 
+                      type="submit"
+                      disabled={isProcessing}
+                      className="w-full py-4 bg-ios-blue text-white font-bold rounded-xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:scale-100 mt-2"
+                    >
+                      {isProcessing ? (
+                        <>Processing <Loader2 className="animate-spin" size={20} /></>
+                      ) : (
+                        <>Pay ₹ {amount}</>
+                      )}
+                    </button>
+                    
+                    <div className="flex justify-center items-center gap-2 text-xs text-slate-400">
+                       <ShieldCheck size={14} />
+                       Secured by Razorpay
+                    </div>
+                  </form>
+                </>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
