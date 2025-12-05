@@ -1,34 +1,74 @@
 
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, Check, X, Clock, Save, Search, Filter } from 'lucide-react';
-import { AuthContext } from '../../App';
+import { Calendar, Check, X, Clock, Save, ChevronDown, Filter, Lock } from 'lucide-react';
+import { AuthContext, SchoolContext } from '../../App';
 
 export const AdminAttendance: React.FC = () => {
-  const { allStudents } = useContext(AuthContext);
+  const { allStudents, currentAdmin } = useContext(AuthContext);
+  const { attendance: globalAttendance, setAttendance: setGlobalAttendance } = useContext(SchoolContext);
+  
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  // Mock state for attendance, in a real app this would fetch from DB based on date
-  const [attendance, setAttendance] = useState<Record<string, 'present' | 'absent' | 'late'>>({});
+  
+  // Logic for Class Teacher View Locking
+  const isTeacher = currentAdmin?.role === 'Teacher';
+  const teacherClass = currentAdmin?.assignedClass || 'All';
+  const teacherSection = currentAdmin?.assignedSection || 'All';
+
+  const [selectedClass, setSelectedClass] = useState(isTeacher ? teacherClass : 'All');
+  const [selectedSection, setSelectedSection] = useState(isTeacher ? teacherSection : 'All');
+
+  // Enforce lock on mount and update if context changes
+  useEffect(() => {
+    if (isTeacher) {
+      setSelectedClass(teacherClass);
+      setSelectedSection(teacherSection);
+    }
+  }, [isTeacher, teacherClass, teacherSection]);
+  
+  // Local state for the current editing session
+  const [dailyAttendance, setDailyAttendance] = useState<Record<string, 'present' | 'absent' | 'late'>>({});
+
+  // Sync local state when date changes
+  useEffect(() => {
+    setDailyAttendance(globalAttendance[date] || {});
+  }, [date, globalAttendance]);
+
+  // Derived Data for Filters
+  const uniqueClasses = useMemo(() => ['All', ...Array.from(new Set(allStudents.map(s => s.class)))], [allStudents]);
+  const uniqueSections = useMemo(() => ['All', ...Array.from(new Set(allStudents.map(s => s.section)))], [allStudents]);
+
+  const filteredStudents = useMemo(() => {
+    return allStudents.filter(student => {
+      const classMatch = selectedClass === 'All' || student.class === selectedClass;
+      const sectionMatch = selectedSection === 'All' || student.section === selectedSection;
+      return classMatch && sectionMatch;
+    });
+  }, [allStudents, selectedClass, selectedSection]);
 
   const handleStatusChange = (id: string, status: 'present' | 'absent' | 'late') => {
-    setAttendance(prev => ({ ...prev, [id]: status }));
+    setDailyAttendance(prev => ({ ...prev, [id]: status }));
+  };
+
+  const markAll = (status: 'present' | 'absent') => {
+    const updates: Record<string, 'present' | 'absent' | 'late'> = {};
+    filteredStudents.forEach(s => {
+      updates[s.admissionNo] = status;
+    });
+    setDailyAttendance(prev => ({ ...prev, ...updates }));
   };
 
   const handleSave = () => {
+    setGlobalAttendance(prev => ({
+      ...prev,
+      [date]: { ...prev[date], ...dailyAttendance }
+    }));
     alert(`Attendance for ${date} saved successfully!`);
-  };
-
-  const getStatusColor = (status: string) => {
-    switch(status) {
-      case 'present': return 'bg-green-500 text-white';
-      case 'absent': return 'bg-red-500 text-white';
-      case 'late': return 'bg-orange-500 text-white';
-      default: return 'bg-slate-100 dark:bg-white/10 text-slate-400';
-    }
   };
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-end gap-4">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Daily Attendance</h1>
@@ -45,28 +85,36 @@ export const AdminAttendance: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
-         {['Class X-A', 'Class X-B', 'Class IX-A', 'Class IX-B'].map((cls, i) => (
-           <button 
-             key={cls}
-             className={`px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${i === 0 ? 'bg-slate-900 dark:bg-white text-white dark:text-black shadow-lg' : 'bg-white dark:bg-[#1C1C1E] text-slate-500 border border-slate-100 dark:border-white/5'}`}
-           >
-             {cls}
-           </button>
-         ))}
-      </div>
+      {/* Filters */}
+      {isTeacher ? (
+         <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-500/10 rounded-xl text-blue-700 dark:text-blue-300 font-bold border border-blue-100 dark:border-blue-500/20 whitespace-nowrap w-fit">
+            <Lock size={16} /> 
+            <span>My Class: {teacherClass}-{teacherSection}</span>
+         </div>
+      ) : (
+         <div className="flex gap-2">
+            <FilterDropdown label="Class" options={uniqueClasses} selected={selectedClass} onSelect={setSelectedClass} />
+            <FilterDropdown label="Section" options={uniqueSections} selected={selectedSection} onSelect={setSelectedSection} />
+         </div>
+      )}
 
+      {/* List */}
       <div className="bg-white dark:bg-[#1C1C1E] rounded-[2rem] shadow-sm border border-slate-100 dark:border-white/5 overflow-hidden">
-        <div className="p-6 border-b border-slate-100 dark:border-white/5 flex justify-between items-center">
-           <h3 className="font-bold text-lg text-slate-900 dark:text-white">Student List</h3>
+        <div className="p-6 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50 dark:bg-white/5">
+           <h3 className="font-bold text-lg text-slate-900 dark:text-white">Student List ({filteredStudents.length})</h3>
            <div className="flex gap-2">
-              <button className="text-xs font-bold text-green-600 bg-green-50 dark:bg-green-500/10 px-3 py-1.5 rounded-lg hover:bg-green-100 transition-colors">Mark All Present</button>
+              <button 
+                onClick={() => markAll('present')}
+                className="text-xs font-bold text-green-600 bg-green-100 dark:bg-green-500/20 px-3 py-2 rounded-lg hover:bg-green-200 transition-colors"
+              >
+                Mark All Present
+              </button>
            </div>
         </div>
         
-        <div className="divide-y divide-slate-100 dark:divide-white/5">
-           {allStudents.map((student) => {
-             const status = attendance[student.admissionNo] || 'present'; // Default to present
+        <div className="divide-y divide-slate-100 dark:divide-white/5 max-h-[60vh] overflow-y-auto">
+           {filteredStudents.map((student) => {
+             const status = dailyAttendance[student.admissionNo] || 'present'; // Default to present visually if undefined
              return (
                <div key={student.admissionNo} className="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
                   <div className="flex items-center gap-4">
@@ -82,21 +130,21 @@ export const AdminAttendance: React.FC = () => {
                   <div className="flex bg-slate-100 dark:bg-black/20 rounded-lg p-1 gap-1">
                      <button 
                        onClick={() => handleStatusChange(student.admissionNo, 'present')}
-                       className={`p-2 rounded-md transition-all ${status === 'present' ? 'bg-white dark:bg-[#2C2C2E] text-green-500 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                       className={`p-2 rounded-md transition-all ${status === 'present' ? 'bg-white dark:bg-[#2C2C2E] text-green-500 shadow-sm scale-105' : 'text-slate-400 hover:text-slate-600'}`}
                        title="Present"
                      >
                         <Check size={18} strokeWidth={3} />
                      </button>
                      <button 
                        onClick={() => handleStatusChange(student.admissionNo, 'absent')}
-                       className={`p-2 rounded-md transition-all ${status === 'absent' ? 'bg-white dark:bg-[#2C2C2E] text-red-500 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                       className={`p-2 rounded-md transition-all ${status === 'absent' ? 'bg-white dark:bg-[#2C2C2E] text-red-500 shadow-sm scale-105' : 'text-slate-400 hover:text-slate-600'}`}
                        title="Absent"
                      >
                         <X size={18} strokeWidth={3} />
                      </button>
                      <button 
                        onClick={() => handleStatusChange(student.admissionNo, 'late')}
-                       className={`p-2 rounded-md transition-all ${status === 'late' ? 'bg-white dark:bg-[#2C2C2E] text-orange-500 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                       className={`p-2 rounded-md transition-all ${status === 'late' ? 'bg-white dark:bg-[#2C2C2E] text-orange-500 shadow-sm scale-105' : 'text-slate-400 hover:text-slate-600'}`}
                        title="Late"
                      >
                         <Clock size={18} strokeWidth={3} />
@@ -105,6 +153,9 @@ export const AdminAttendance: React.FC = () => {
                </div>
              );
            })}
+           {filteredStudents.length === 0 && (
+             <div className="p-8 text-center text-slate-400">No students found for selection.</div>
+           )}
         </div>
       </div>
 
@@ -122,3 +173,16 @@ export const AdminAttendance: React.FC = () => {
     </div>
   );
 };
+
+const FilterDropdown: React.FC<{ label: string, options: string[], selected: string, onSelect: (value: string) => void }> = ({ label, options, selected, onSelect }) => (
+    <div className="relative">
+        <select
+            value={selected}
+            onChange={e => onSelect(e.target.value)}
+            className="appearance-none w-32 bg-white dark:bg-[#1C1C1E] border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-slate-900 dark:text-white font-bold text-sm focus:ring-2 focus:ring-ios-blue/50 outline-none cursor-pointer"
+        >
+            {options.map(opt => <option key={opt} value={opt}>{opt === 'All' ? `All ${label}s` : opt}</option>)}
+        </select>
+        <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+    </div>
+);

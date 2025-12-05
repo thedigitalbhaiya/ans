@@ -1,5 +1,5 @@
 
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect, useMemo } from 'react';
 import { 
   BookOpen, 
   CalendarClock, 
@@ -26,33 +26,69 @@ import {
   PieChart as PieChartIcon,
   LogIn,
   User,
-  Wallet
+  Wallet,
+  Cake,
+  AlertTriangle,
+  X,
+  ExternalLink,
+  MessageCircle,
+  Info
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PieChart, Pie, Cell } from 'recharts';
 import { Link, useNavigate } from 'react-router-dom';
 import { Logo } from './Logo';
-import { attendanceData, noticesList, birthdays, timetableSchedule } from '../data';
+import { noticesList } from '../data';
 import { AuthContext, SchoolContext } from '../App';
-
-const apps = [
-  { name: 'Fees', icon: CreditCard, path: '/fees', color: 'bg-green-600' },
-  { name: 'Results', icon: Trophy, path: '/results', color: 'bg-yellow-500' },
-  { name: 'Homework', icon: BookOpen, path: '/homework', color: 'bg-blue-500' },
-  { name: 'Schedule', icon: Clock, path: '/timetable', color: 'bg-cyan-500' }, // Added Schedule
-  { name: 'e-Magazine', icon: Image, path: '/gallery', color: 'bg-purple-500' },
-  { name: 'Feedback', icon: MessageSquare, path: '/feedback', color: 'bg-orange-500' },
-  { name: 'Application', icon: FileText, path: '/application', color: 'bg-indigo-500' },
-  { name: 'Admission', icon: UserPlus, path: '/admission', color: 'bg-rose-500' }, 
-  { name: 'Circulars', icon: Bell, path: '/circulars', color: 'bg-red-500' },
-];
+import { Student } from '../types';
 
 export const Dashboard: React.FC = () => {
-  const { currentStudent, isLoggedIn } = useContext(AuthContext);
-  const { dailyNotice, showBirthdayWidget, schoolName } = useContext(SchoolContext);
+  const { currentStudent, isLoggedIn, allStudents } = useContext(AuthContext);
+  const { dailyNotice, showBirthdayWidget, settings, timetable, flashNotice, socialLinks } = useContext(SchoolContext);
   const [currentBirthdayIndex, setCurrentBirthdayIndex] = useState(0);
   const [currentTime, setCurrentTime] = useState(new Date());
   const navigate = useNavigate();
+
+  // Filter apps based on settings
+  const apps = useMemo(() => {
+    const list = [
+      { name: 'Homework', icon: BookOpen, path: '/homework', color: 'bg-blue-500' },
+      { name: 'Schedule', icon: Clock, path: '/timetable', color: 'bg-cyan-500' },
+      { name: 'e-Magazine', icon: Image, path: '/gallery', color: 'bg-purple-500' },
+      { name: 'Feedback', icon: MessageSquare, path: '/feedback', color: 'bg-orange-500' },
+      { name: 'Application', icon: FileText, path: '/application', color: 'bg-indigo-500' },
+      { name: 'Circulars', icon: Bell, path: '/circulars', color: 'bg-red-500' },
+    ];
+
+    if (settings.enableOnlineFees) {
+      list.unshift({ name: 'Fees', icon: CreditCard, path: '/fees', color: 'bg-green-600' });
+    }
+    if (settings.showResults) {
+      list.splice(1, 0, { name: 'Results', icon: Trophy, path: '/results', color: 'bg-yellow-500' });
+    }
+    if (settings.admissionsOpen) {
+      list.push({ name: 'Admission', icon: UserPlus, path: '/admission', color: 'bg-rose-500' });
+    }
+
+    return list;
+  }, [settings]);
+
+  // --- AUTOMATED BIRTHDAY LOGIC ---
+  const todayBirthdays = useMemo(() => {
+    const today = new Date();
+    const currentMonth = today.getMonth() + 1;
+    const currentDay = today.getDate();
+
+    return allStudents.filter(student => {
+      // Robust date parsing (ignoring year)
+      const [year, month, day] = student.dob.split('-').map(Number);
+      return month === currentMonth && day === currentDay;
+    });
+  }, [allStudents]);
+
+  const isCurrentUserBirthday = useMemo(() => {
+    return isLoggedIn && todayBirthdays.some(s => s.admissionNo === currentStudent.admissionNo);
+  }, [isLoggedIn, todayBirthdays, currentStudent]);
 
   // Parse attendance percentage from string (e.g., "87.6%")
   const attendancePercentage = parseFloat(currentStudent.stats.attendance.replace('%', ''));
@@ -61,13 +97,14 @@ export const Dashboard: React.FC = () => {
     { name: 'Absent', value: 100 - attendancePercentage, color: '#FF3B30' },
   ];
 
-  // Birthday Carousel Logic
+  // Birthday Carousel Logic (cycling through names if multiple)
   useEffect(() => {
+    if (todayBirthdays.length === 0) return;
     const interval = setInterval(() => {
-      setCurrentBirthdayIndex((prev) => (prev + 1) % birthdays.length);
+      setCurrentBirthdayIndex((prev) => (prev + 1) % todayBirthdays.length);
     }, 4000);
     return () => clearInterval(interval);
-  }, []);
+  }, [todayBirthdays]);
 
   // Live Time Logic
   useEffect(() => {
@@ -84,7 +121,9 @@ export const Dashboard: React.FC = () => {
   // Dynamic Next Period Logic
   const getNextClass = () => {
     const dayName = currentTime.toLocaleDateString('en-US', { weekday: 'long' });
-    const todaySchedule = timetableSchedule[dayName] || [];
+    const studentClassKey = `${currentStudent.class}-${currentStudent.section}`;
+    const todaySchedule = timetable[studentClassKey]?.[dayName] || [];
+    
     const timeToMinutes = (timeStr: string) => {
       const [time, period] = timeStr.split(' ');
       let [hours, minutes] = time.split(':').map(Number);
@@ -112,20 +151,20 @@ export const Dashboard: React.FC = () => {
 
   const nextClassInfo = getNextClass();
 
+  // --- WHATSAPP LOGIC ---
+  const classKey = `${currentStudent.class}-${currentStudent.section}`;
+  const whatsappLink = socialLinks[classKey];
+
   const handleAppClick = (path: string) => {
-    // Only lock specific "student-personal" apps
-    const lockedApps = ['/fees', '/results', '/homework', '/application'];
-    if (lockedApps.includes(path) && !isLoggedIn) {
-       // Navigate to the page, but the page itself will handle the locked state (showing Login Required)
-       navigate(path);
-    } else {
-       navigate(path);
-    }
+    navigate(path);
   };
 
   const handleLogoClick = () => {
     navigate('/profile');
   };
+
+  // Determine if Flash Notice should show
+  const shouldShowFlash = flashNotice.isVisible && isLoggedIn && (flashNotice.targetAudience === 'ALL' || flashNotice.targetAudience === currentStudent.class);
 
   return (
     <div className="space-y-8">
@@ -149,13 +188,13 @@ export const Dashboard: React.FC = () => {
           >
             <div className="flex items-center gap-5 mb-2 group cursor-pointer" onClick={handleLogoClick}>
               <div className="w-24 h-24 rounded-2xl bg-white flex items-center justify-center shadow-xl p-3 transform group-hover:scale-105 transition-transform duration-300">
-                 <Logo className="w-full h-full" />
+                 <img src={settings.logoUrl} alt="Logo" className="w-full h-full object-contain" />
               </div>
               <div>
                  <span className="px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-blue-100 text-[10px] font-bold tracking-widest uppercase border border-white/10 mb-2 inline-block">
-                    Bahadurganj
+                    {settings.currentSession}
                  </span>
-                 <h1 className="text-2xl md:text-4xl font-extrabold text-white tracking-tight leading-tight">{schoolName}</h1>
+                 <h1 className="text-2xl md:text-4xl font-extrabold text-white tracking-tight leading-tight">{settings.schoolName}</h1>
                  <p className="text-blue-200 text-xs md:text-sm font-medium mt-1">Affiliated to CBSE, Delhi</p>
                  <p className="text-yellow-300 text-xs md:text-sm font-bold mt-1 tracking-wide">AFFILIATION NO. 331140</p>
               </div>
@@ -163,6 +202,32 @@ export const Dashboard: React.FC = () => {
           </motion.div>
         </div>
       </motion.div>
+
+      {/* WHATSAPP CARD (CONDITIONAL) */}
+      {isLoggedIn && whatsappLink && (
+         <motion.div 
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-[#25D366] rounded-[2rem] p-6 text-white shadow-xl shadow-green-500/20 relative overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
+            onClick={() => window.open(whatsappLink, '_blank')}
+         >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 rounded-full -mr-10 -mt-10 blur-xl"></div>
+            <div className="relative z-10 flex items-center justify-between">
+               <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-md">
+                     <MessageCircle size={32} className="text-[#25D366]" fill="currentColor" />
+                  </div>
+                  <div>
+                     <h3 className="text-lg font-bold">Join Class {currentStudent.class}-{currentStudent.section} Group</h3>
+                     <p className="text-green-50 font-medium text-sm">Official WhatsApp Community</p>
+                  </div>
+               </div>
+               <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                  <ArrowRight size={20} />
+               </div>
+            </div>
+         </motion.div>
+      )}
 
       {/* 2. Quick Access Apps Grid */}
       <div className="space-y-4">
@@ -195,7 +260,46 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. Daily Bulletin (Live Data) */}
+      {/* 3. IMPORTANT NOTICE (Replaces Pop-up) */}
+      <AnimatePresence>
+        {shouldShowFlash && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="bg-white dark:bg-[#1C1C1E] border-l-4 border-red-500 rounded-[1.5rem] p-6 shadow-sm relative overflow-hidden">
+               {/* Clean Background effect */}
+               <div className="absolute right-0 top-0 w-32 h-32 bg-red-500/5 rounded-bl-full pointer-events-none"></div>
+               
+               <div className="flex items-start gap-4 relative z-10">
+                  <div className="w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-500/10 flex items-center justify-center text-red-500 flex-shrink-0 animate-pulse">
+                     <AlertTriangle size={24} />
+                  </div>
+                  <div className="flex-1">
+                     <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1 tracking-tight">
+                        {flashNotice.title}
+                     </h3>
+                     <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed mb-3">
+                        {flashNotice.message}
+                     </p>
+                     {flashNotice.actionLink && (
+                        <button 
+                           onClick={() => window.open(flashNotice.actionLink, '_blank')}
+                           className="text-xs font-bold bg-slate-900 dark:bg-white text-white dark:text-black px-4 py-2 rounded-lg flex items-center gap-2 w-fit hover:scale-105 transition-transform"
+                        >
+                           View Details <ExternalLink size={12} />
+                        </button>
+                     )}
+                  </div>
+               </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 4. Daily Bulletin */}
       <motion.div
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
@@ -228,7 +332,7 @@ export const Dashboard: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className={`md:col-span-2 bg-white dark:bg-[#1C1C1E] rounded-[2rem] p-8 shadow-sm border border-slate-100 dark:border-white/5 relative overflow-hidden flex flex-col justify-between min-h-[220px] ${!showBirthdayWidget ? 'md:col-span-3' : ''}`}
+            className={`md:col-span-2 bg-white dark:bg-[#1C1C1E] rounded-[2rem] p-8 shadow-sm border border-slate-100 dark:border-white/5 relative overflow-hidden flex flex-col justify-between min-h-[220px] ${!showBirthdayWidget || todayBirthdays.length === 0 ? 'md:col-span-3' : ''}`}
           >
                <div className="flex justify-between items-start z-10">
                  <div className="flex items-center gap-2 bg-ios-blue/10 px-3 py-1 rounded-full">
@@ -261,8 +365,8 @@ export const Dashboard: React.FC = () => {
                </div>
           </motion.div>
 
-          {/* Birthday Widget */}
-          {showBirthdayWidget && (
+          {/* Birthday Widget (Mini Sidebar Version - Only shows if Widget Setting is ON and birthdays exist) */}
+          {showBirthdayWidget && todayBirthdays.length > 0 && (
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -278,24 +382,26 @@ export const Dashboard: React.FC = () => {
               
               <div className="flex-1 flex flex-col items-center justify-center text-center relative z-10 w-full">
                 <AnimatePresence mode="wait">
-                   <motion.div
-                     key={currentBirthdayIndex}
-                     initial={{ opacity: 0, x: 20 }}
-                     animate={{ opacity: 1, x: 0 }}
-                     exit={{ opacity: 0, x: -20 }}
-                     transition={{ duration: 0.4 }}
-                     className="flex flex-col items-center w-full"
-                   >
-                     <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-md border-2 border-white/30 p-1 mb-3 shadow-lg">
-                       <img 
-                          src={birthdays[currentBirthdayIndex].image} 
-                          className="w-full h-full rounded-full object-cover" 
-                          alt="Birthday" 
-                       />
-                     </div>
-                     <h4 className="font-bold text-xl truncate w-full">{birthdays[currentBirthdayIndex].name}</h4>
-                     <p className="text-pink-100 text-sm">Class {birthdays[currentBirthdayIndex].class} • {birthdays[currentBirthdayIndex].date}</p>
-                   </motion.div>
+                   {todayBirthdays.length > 0 && (
+                     <motion.div
+                       key={currentBirthdayIndex}
+                       initial={{ opacity: 0, x: 20 }}
+                       animate={{ opacity: 1, x: 0 }}
+                       exit={{ opacity: 0, x: -20 }}
+                       transition={{ duration: 0.4 }}
+                       className="flex flex-col items-center w-full"
+                     >
+                       <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-md border-2 border-white/30 p-1 mb-3 shadow-lg">
+                         <img 
+                            src={todayBirthdays[currentBirthdayIndex].avatar} 
+                            className="w-full h-full rounded-full object-cover" 
+                            alt="Birthday" 
+                         />
+                       </div>
+                       <h4 className="font-bold text-xl truncate w-full">{todayBirthdays[currentBirthdayIndex].name}</h4>
+                       <p className="text-pink-100 text-sm">Class {todayBirthdays[currentBirthdayIndex].class}-{todayBirthdays[currentBirthdayIndex].section}</p>
+                     </motion.div>
+                   )}
                 </AnimatePresence>
               </div>
             </motion.div>
@@ -329,31 +435,33 @@ export const Dashboard: React.FC = () => {
 
       {isLoggedIn && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Fee Widget (Added) */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            onClick={() => navigate('/fees')}
-            className="bg-white dark:bg-[#1C1C1E] rounded-[2rem] p-6 shadow-sm border border-slate-100 dark:border-white/5 cursor-pointer group hover:shadow-md transition-shadow"
-          >
-             <div className="flex justify-between items-start mb-4">
-               <div className="w-12 h-12 rounded-2xl bg-green-100 dark:bg-green-500/20 flex items-center justify-center text-green-600 dark:text-green-400">
-                  <Wallet size={24} />
+          {/* Fee Widget - Show only if fees enabled */}
+          {settings.enableOnlineFees && (
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              onClick={() => navigate('/fees')}
+              className="bg-white dark:bg-[#1C1C1E] rounded-[2rem] p-6 shadow-sm border border-slate-100 dark:border-white/5 cursor-pointer group hover:shadow-md transition-shadow"
+            >
+               <div className="flex justify-between items-start mb-4">
+                 <div className="w-12 h-12 rounded-2xl bg-green-100 dark:bg-green-500/20 flex items-center justify-center text-green-600 dark:text-green-400">
+                    <Wallet size={24} />
+                 </div>
+                 <ArrowRight size={20} className="text-slate-300 group-hover:text-green-500 transition-colors" />
                </div>
-               <ArrowRight size={20} className="text-slate-300 group-hover:text-green-500 transition-colors" />
-             </div>
-             <p className="text-sm font-bold text-slate-500 uppercase tracking-wide">Fee Status</p>
-             <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">Pending</h3>
-             <p className="text-xs text-red-500 font-bold mt-2">Due: ₹ 4,500</p>
-          </motion.div>
+               <p className="text-sm font-bold text-slate-500 uppercase tracking-wide">Fee Status</p>
+               <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">Pending</h3>
+               <p className="text-xs text-red-500 font-bold mt-2">Due: ₹ 4,500</p>
+            </motion.div>
+          )}
 
-          {/* Attendance Summary */}
+          {/* Attendance Summary - Span full width if fees hidden */}
           <motion.div 
              initial={{ opacity: 0, y: 20 }}
              animate={{ opacity: 1, y: 0 }}
              transition={{ delay: 0.35 }}
-             className="md:col-span-2 bg-white dark:bg-[#1C1C1E] rounded-[2rem] p-6 shadow-sm border border-slate-100 dark:border-white/5"
+             className={`${settings.enableOnlineFees ? 'md:col-span-2' : 'md:col-span-3'} bg-white dark:bg-[#1C1C1E] rounded-[2rem] p-6 shadow-sm border border-slate-100 dark:border-white/5`}
           >
              <div className="flex justify-between items-center mb-6">
                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Attendance Overview</h3>
@@ -361,7 +469,6 @@ export const Dashboard: React.FC = () => {
              </div>
              <div className="flex items-center gap-6">
                <div className="w-32 h-32 relative flex-shrink-0">
-                 {/* Fixed dimensions for PieChart to resolve resize error in fixed container */}
                  <PieChart width={128} height={128}>
                    <Pie
                      data={dynamicAttendanceData}
@@ -470,7 +577,7 @@ export const Dashboard: React.FC = () => {
         )}
       </motion.div>
 
-      {/* NEW: Quick Call Actions */}
+      {/* Quick Call Actions */}
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -478,7 +585,7 @@ export const Dashboard: React.FC = () => {
         className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4"
       >
         <a 
-          href="tel:+919430646481" 
+          href={`tel:${settings.contactNumber}`} 
           className="relative overflow-hidden bg-[#25D366] text-white p-5 rounded-[1.8rem] shadow-lg shadow-green-500/20 flex items-center justify-center gap-4 active:scale-95 transition-transform group"
         >
             <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-8 -mt-8 blur-2xl"></div>
@@ -491,7 +598,7 @@ export const Dashboard: React.FC = () => {
             </div>
         </a>
         <a 
-          href="tel:+919430646481" 
+          href={`tel:${settings.contactNumber}`} 
           className="relative overflow-hidden bg-[#1B1464] text-white p-5 rounded-[1.8rem] shadow-lg shadow-blue-900/20 flex items-center justify-center gap-4 active:scale-95 transition-transform group"
         >
             <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-8 -mt-8 blur-2xl"></div>
@@ -528,9 +635,8 @@ export const Dashboard: React.FC = () => {
                 <div className="pt-1">
                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-1">Address</p>
                    <p className="text-lg font-medium leading-relaxed text-slate-100">
-                     {schoolName}<br/>
-                     Bahadurganj, Kishanganj<br/>
-                     Bihar, India - 855101
+                     {settings.schoolName}<br/>
+                     {settings.schoolAddress}
                    </p>
                 </div>
              </div>
@@ -542,7 +648,7 @@ export const Dashboard: React.FC = () => {
                 </div>
                 <div className="pt-1">
                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-1">Phone</p>
-                   <p className="text-xl font-bold text-white">+91 94306 46481</p>
+                   <p className="text-xl font-bold text-white">{settings.contactNumber}</p>
                    <p className="text-sm text-slate-500 mt-1">Mon - Sat, 9am - 4pm</p>
                 </div>
              </div>
@@ -554,7 +660,7 @@ export const Dashboard: React.FC = () => {
                 </div>
                 <div className="pt-1">
                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-1">Email</p>
-                   <p className="text-lg font-medium text-white break-all">azimnationalschool@gmail.com</p>
+                   <p className="text-lg font-medium text-white break-all">{settings.email}</p>
                 </div>
              </div>
           </div>

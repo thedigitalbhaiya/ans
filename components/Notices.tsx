@@ -1,18 +1,31 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, Trophy, Calendar, AlertTriangle, Search, ChevronRight, LayoutList, CalendarDays, ChevronLeft, X, Clock } from 'lucide-react';
-import { noticesList, calendarEvents } from '../data';
+import { Bell, Trophy, Calendar, AlertTriangle, Search, ChevronRight, LayoutList, CalendarDays, ChevronLeft, X, Clock, Sparkles } from 'lucide-react';
+import { SchoolContext } from '../App';
 import { Notice } from '../types';
 
 const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export const Notices: React.FC = () => {
+  const { notices } = useContext(SchoolContext);
   const [view, setView] = useState<'list' | 'calendar'>('list');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendarGrid, setCalendarGrid] = useState<(number | null)[]>([]);
   const [selectedDateStr, setSelectedDateStr] = useState<string | null>(null);
   const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
+
+  // Filter: Published Only
+  const visibleNotices = notices
+    .filter(n => n.isPublished)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  // Check for "New" (within 48 hours)
+  const isNew = (dateStr: string) => {
+    const diff = new Date().getTime() - new Date(dateStr).getTime();
+    const hours = diff / (1000 * 3600);
+    return hours < 48 && hours >= 0;
+  };
 
   // Calendar Logic
   useEffect(() => {
@@ -45,7 +58,8 @@ export const Notices: React.FC = () => {
     const dayStr = String(day).padStart(2, '0');
     const dateKey = `${year}-${month}-${dayStr}`;
     
-    return calendarEvents.find(e => e.date === dateKey);
+    // Check global notices list
+    return visibleNotices.find(n => n.date === dateKey);
   };
 
   return (
@@ -92,8 +106,8 @@ export const Notices: React.FC = () => {
             </div>
 
             <div className="grid gap-4">
-              {noticesList.map((notice, index) => {
-                const Icon = notice.icon;
+              {visibleNotices.map((notice, index) => {
+                const isNewItem = isNew(notice.date);
                 return (
                   <motion.div
                     key={notice.id}
@@ -103,17 +117,23 @@ export const Notices: React.FC = () => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1 }}
                     whileHover={{ scale: 1.01 }}
-                    className="bg-white dark:bg-[#1C1C1E] p-6 rounded-[1.5rem] shadow-sm border border-slate-100 dark:border-white/5 group cursor-pointer"
+                    className="bg-white dark:bg-[#1C1C1E] p-6 rounded-[1.5rem] shadow-sm border border-slate-100 dark:border-white/5 group cursor-pointer relative overflow-hidden"
                   >
+                    {isNewItem && (
+                       <div className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl shadow-md z-10 animate-pulse">
+                          NEW
+                       </div>
+                    )}
+
                     <div className="flex items-start gap-4">
-                      <div className={`w-12 h-12 rounded-2xl ${notice.bg} ${notice.color} flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300`}>
-                        <Icon size={24} />
+                      <div className={`w-12 h-12 rounded-2xl ${notice.bg || 'bg-slate-100'} ${notice.color || 'text-slate-500'} flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300`}>
+                        <Bell size={24} />
                       </div>
                       
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-start">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${notice.bg} ${notice.color}`}>
+                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${notice.bg || 'bg-slate-100'} ${notice.color || 'text-slate-500'}`}>
                               {notice.category}
                             </span>
                             <span className="text-xs text-slate-400">• {notice.date}</span>
@@ -196,7 +216,7 @@ export const Notices: React.FC = () => {
                          `}>
                             {day}
                             {event && !isSelected && (
-                              <span className={`absolute bottom-1 w-1.5 h-1.5 rounded-full ${event.type === 'holiday' ? 'bg-red-500' : 'bg-blue-500'}`}></span>
+                              <span className={`absolute bottom-1 w-1.5 h-1.5 rounded-full ${event.category === 'Holiday' ? 'bg-red-500' : 'bg-blue-500'}`}></span>
                             )}
                          </div>
                        </div>
@@ -219,21 +239,17 @@ export const Notices: React.FC = () => {
                       {new Date(selectedDateStr).toLocaleDateString('default', { day: 'numeric', month: 'long', year: 'numeric' })}
                     </h3>
                     
-                    {calendarEvents.find(e => e.date === selectedDateStr) ? (
+                    {visibleNotices.find(e => e.date === selectedDateStr) ? (
                       <div className="flex items-center gap-4 bg-white dark:bg-[#1C1C1E] p-4 rounded-xl shadow-sm">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                          calendarEvents.find(e => e.date === selectedDateStr)?.type === 'holiday' 
-                          ? 'bg-red-100 text-red-600' 
-                          : 'bg-blue-100 text-blue-600'
-                        }`}>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${visibleNotices.find(e => e.date === selectedDateStr)?.bg}`}>
                            <Calendar size={20} />
                         </div>
                         <div>
                            <h4 className="font-bold text-slate-900 dark:text-white">
-                             {calendarEvents.find(e => e.date === selectedDateStr)?.title}
+                             {visibleNotices.find(e => e.date === selectedDateStr)?.title}
                            </h4>
                            <span className="text-xs text-slate-500 capitalize">
-                             {calendarEvents.find(e => e.date === selectedDateStr)?.type}
+                             {visibleNotices.find(e => e.date === selectedDateStr)?.category}
                            </span>
                         </div>
                       </div>
@@ -262,9 +278,9 @@ export const Notices: React.FC = () => {
                layoutId={`notice-${selectedNotice.id}`}
                className="bg-white dark:bg-[#1C1C1E] w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl relative z-10"
              >
-                <div className={`h-32 ${selectedNotice.bg.replace('/10', '/30')} flex items-center justify-center`}>
+                <div className={`h-32 ${selectedNotice.bg ? selectedNotice.bg.replace('/10', '/30') : 'bg-slate-100'} flex items-center justify-center`}>
                   <div className={`w-16 h-16 rounded-2xl bg-white/50 dark:bg-black/20 flex items-center justify-center ${selectedNotice.color}`}>
-                    <selectedNotice.icon size={32} />
+                    <Bell size={32} />
                   </div>
                 </div>
                 <button 
@@ -291,9 +307,6 @@ export const Notices: React.FC = () => {
                   <div className="prose dark:prose-invert">
                     <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-base">
                       {selectedNotice.content}
-                    </p>
-                    <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-base mt-4">
-                      For further details, please contact the school office during working hours.
                     </p>
                   </div>
                   

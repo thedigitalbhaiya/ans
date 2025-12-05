@@ -14,7 +14,9 @@
     "lucide-react": "^0.555.0",
     "recharts": "^3.5.1",
     "react-router-dom": "^7.10.0",
-    "framer-motion": "^12.23.25"
+    "framer-motion": "^12.23.25",
+    "firebase": "^12.6.0",
+    "papaparse": "5.4.1"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

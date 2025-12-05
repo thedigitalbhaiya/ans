@@ -1,10 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
+
+import React, { useState, useEffect, useContext } from 'react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, LogIn } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { AuthContext, SchoolContext } from '../App';
+import { Link } from 'react-router-dom';
 
 const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export const Attendance: React.FC = () => {
+  const { isLoggedIn, currentStudent } = useContext(AuthContext);
+  const { attendance } = useContext(SchoolContext);
+  
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendarData, setCalendarData] = useState<(number | null)[]>([]);
 
@@ -22,16 +28,29 @@ export const Attendance: React.FC = () => {
     const daysInMonth = getDaysInMonth(currentDate);
     const firstDay = getFirstDayOfMonth(currentDate);
     
-    // Create array with empty slots for days before the 1st
     const daysArray: (number | null)[] = Array(firstDay).fill(null);
-    
-    // Fill in the days
     for (let i = 1; i <= daysInMonth; i++) {
       daysArray.push(i);
     }
-    
     setCalendarData(daysArray);
   }, [currentDate]);
+
+  if (!isLoggedIn) {
+      return (
+         <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="w-24 h-24 bg-slate-100 dark:bg-white/5 rounded-full flex items-center justify-center mb-6 text-slate-400">
+               <CalendarIcon size={40} />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Attendance Locked</h2>
+            <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-xs mx-auto">
+               Please login to view your attendance record.
+            </p>
+            <Link to="/profile" className="mt-8 px-8 py-3 bg-slate-900 dark:bg-white text-white dark:text-black font-bold rounded-xl flex items-center gap-2 hover:scale-105 transition-transform">
+               <LogIn size={20} /> Login Now
+            </Link>
+         </div>
+      );
+  }
 
   const handlePrevMonth = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
@@ -41,17 +60,43 @@ export const Attendance: React.FC = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
   };
 
-  // Mock status logic (replace with real data fetching in prod)
+  // REAL DATA LOGIC
   const getStatus = (day: number) => {
-    // Weekend logic (Sunday)
     const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+    
+    // Weekend check
     if (date.getDay() === 0) return 'weekend';
+    
+    // Format YYYY-MM-DD (Local time handling safe for date strings created via constructor)
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(day).padStart(2, '0');
+    const dateString = `${year}-${month}-${d}`;
 
-    // Random mock statuses for demo
-    if (day === 5 || day === 15) return 'absent';
-    if (day === 12) return 'late';
-    return 'present';
+    const dailyRecord = attendance[dateString];
+    
+    // Future date check
+    if (date > new Date()) return 'future';
+
+    if (!dailyRecord) return 'unknown'; // No data recorded for this day yet
+
+    return dailyRecord[currentStudent.admissionNo] || 'unknown';
   };
+
+  // Calculate Monthly Stats based on Context Data
+  const daysInMonth = getDaysInMonth(currentDate);
+  let presentCount = 0;
+  let absentCount = 0;
+  let lateCount = 0;
+  let totalRecorded = 0;
+
+  for (let i = 1; i <= daysInMonth; i++) {
+     const status = getStatus(i);
+     if (status === 'present') presentCount++;
+     if (status === 'absent') absentCount++;
+     if (status === 'late') lateCount++;
+     if (['present', 'absent', 'late'].includes(status)) totalRecorded++;
+  }
 
   return (
     <div className="space-y-8">
@@ -85,13 +130,13 @@ export const Attendance: React.FC = () => {
         </div>
       </div>
 
-      {/* Stats Cards - Floating style */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
         {[
-          { label: 'Total Days', value: getDaysInMonth(currentDate), color: 'text-ios-blue', bg: 'bg-ios-blue/10' },
-          { label: 'Present', value: Math.floor(getDaysInMonth(currentDate) * 0.85), color: 'text-ios-green', bg: 'bg-ios-green/10' }, // Mock calculation
-          { label: 'Absent', value: '02', color: 'text-ios-red', bg: 'bg-ios-red/10' },
-          { label: 'Late', value: '01', color: 'text-ios-orange', bg: 'bg-ios-orange/10' },
+          { label: 'Working Days', value: totalRecorded, color: 'text-ios-blue', bg: 'bg-ios-blue/10' },
+          { label: 'Present', value: presentCount, color: 'text-ios-green', bg: 'bg-ios-green/10' },
+          { label: 'Absent', value: absentCount, color: 'text-ios-red', bg: 'bg-ios-red/10' },
+          { label: 'Late', value: lateCount, color: 'text-ios-orange', bg: 'bg-ios-orange/10' },
         ].map((stat, idx) => (
           <motion.div 
             key={idx}
@@ -128,7 +173,7 @@ export const Attendance: React.FC = () => {
               }
 
               const status = getStatus(day);
-              const isToday = day === new Date().getDate() && currentDate.getMonth() === new Date().getMonth();
+              const isToday = day === new Date().getDate() && currentDate.getMonth() === new Date().getMonth() && currentDate.getFullYear() === new Date().getFullYear();
               
               return (
                 <motion.div 
@@ -150,7 +195,7 @@ export const Attendance: React.FC = () => {
                   </div>
                   
                   {/* Status Dot */}
-                  {status !== 'weekend' && (
+                  {status !== 'weekend' && status !== 'future' && status !== 'unknown' && (
                     <div className={`mt-2 w-1.5 h-1.5 rounded-full transition-transform group-hover:scale-150 ${
                       status === 'present' ? 'bg-ios-green shadow-[0_0_8px_rgba(52,199,89,0.5)]' : 
                       status === 'absent' ? 'bg-ios-red shadow-[0_0_8px_rgba(255,59,48,0.5)]' : 'bg-ios-orange'

@@ -2,23 +2,59 @@
 import React, { useState, useContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Download, CreditCard, CheckCircle2, Clock, X, Loader2, ShieldCheck, LogIn, Smartphone } from 'lucide-react';
-import { feeHistory } from '../data';
-import { AuthContext } from '../App';
+import { AuthContext, SchoolContext } from '../App';
 import { Link } from 'react-router-dom';
 
+const ACADEMIC_MONTHS = [
+  "April", "May", "June", "July", "August", "September", 
+  "October", "November", "December", "January", "February", "March"
+];
+
 export const Fees: React.FC = () => {
-  const { isLoggedIn } = useContext(AuthContext);
+  const { isLoggedIn, currentStudent } = useContext(AuthContext);
+  const { feeStructure } = useContext(SchoolContext);
+
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'upi'>('upi');
   
   // Payment Form State
-  const [amount, setAmount] = useState('4500');
   const [cardNumber, setCardNumber] = useState('');
   const [expiry, setExpiry] = useState('');
   const [cvv, setCvv] = useState('');
   const [upiId, setUpiId] = useState('');
+
+  if (!isLoggedIn) {
+    return (
+       <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="w-24 h-24 bg-slate-100 dark:bg-white/5 rounded-full flex items-center justify-center mb-6 text-slate-400">
+             <CreditCard size={40} />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Fee Details Locked</h2>
+          <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-xs mx-auto">
+             Please login to view your outstanding dues and payment history.
+          </p>
+          <Link to="/profile" className="mt-8 px-8 py-3 bg-slate-900 dark:bg-white text-white dark:text-black font-bold rounded-xl flex items-center gap-2 hover:scale-105 transition-transform">
+             <LogIn size={20} /> Login Now
+          </Link>
+       </div>
+    );
+  }
+
+  // --- DYNAMIC CALCULATION ---
+  const monthlyFee = feeStructure[currentStudent.class] || 1000;
+  
+  // Calculate Outstanding
+  const paidMonthsCount = currentStudent.feeHistory.length;
+  // Determine how many months should have been paid by now (assuming academic year starts April)
+  // For demo simplicity, let's assume we are in October (Month index 6 in ACADEMIC_MONTHS)
+  // April=0, Oct=6. Total 7 months due.
+  const currentMonthIndex = 6; // October fixed for demo visual consistency
+  const monthsDue = currentMonthIndex + 1;
+  const pendingMonths = Math.max(0, monthsDue - paidMonthsCount);
+  const totalOutstanding = pendingMonths * monthlyFee;
+  const amountToPay = totalOutstanding > 0 ? totalOutstanding : monthlyFee; // Default to paying 1 month if all clear
 
   const handlePayment = (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,23 +73,6 @@ export const Fees: React.FC = () => {
       }, 2500);
     }, 2000);
   };
-
-  if (!isLoggedIn) {
-    return (
-       <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="w-24 h-24 bg-slate-100 dark:bg-white/5 rounded-full flex items-center justify-center mb-6 text-slate-400">
-             <CreditCard size={40} />
-          </div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Fee Details Locked</h2>
-          <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-xs mx-auto">
-             Please login to view your outstanding dues and payment history.
-          </p>
-          <Link to="/profile" className="mt-8 px-8 py-3 bg-slate-900 dark:bg-white text-white dark:text-black font-bold rounded-xl flex items-center gap-2 hover:scale-105 transition-transform">
-             <LogIn size={20} /> Login Now
-          </Link>
-       </div>
-    );
-  }
 
   return (
     <div className="space-y-6 relative">
@@ -75,23 +94,31 @@ export const Fees: React.FC = () => {
       <motion.div 
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-br from-ios-red to-rose-600 rounded-[2rem] p-8 text-white shadow-xl shadow-red-500/20 relative overflow-hidden"
+        className={`rounded-[2rem] p-8 text-white shadow-xl relative overflow-hidden ${totalOutstanding > 0 ? 'bg-gradient-to-br from-ios-red to-rose-600 shadow-red-500/20' : 'bg-gradient-to-br from-ios-green to-emerald-600 shadow-green-500/20'}`}
       >
         <div className="absolute right-0 top-0 w-64 h-64 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl"></div>
         <div className="relative z-10">
-          <p className="text-red-100 font-medium mb-1 uppercase tracking-wider text-xs">Total Outstanding</p>
-          <h2 className="text-4xl font-bold mb-6">₹ 4,500</h2>
-          <div className="flex items-center gap-2 text-sm bg-white/20 w-fit px-3 py-1.5 rounded-lg backdrop-blur-md">
-            <Clock size={16} />
-            <span>Due by 10th October 2025</span>
-          </div>
+          <p className="text-white/80 font-medium mb-1 uppercase tracking-wider text-xs">Total Outstanding</p>
+          <h2 className="text-4xl font-bold mb-6">₹ {totalOutstanding.toLocaleString()}</h2>
+          {totalOutstanding > 0 ? (
+             <div className="flex items-center gap-2 text-sm bg-white/20 w-fit px-3 py-1.5 rounded-lg backdrop-blur-md">
+               <Clock size={16} />
+               <span>{pendingMonths} Months Pending</span>
+             </div>
+          ) : (
+             <div className="flex items-center gap-2 text-sm bg-white/20 w-fit px-3 py-1.5 rounded-lg backdrop-blur-md">
+               <CheckCircle2 size={16} />
+               <span>All Dues Cleared</span>
+             </div>
+          )}
         </div>
       </motion.div>
 
       {/* History List */}
       <div className="space-y-4">
         <h3 className="text-lg font-bold text-slate-900 dark:text-white px-2">Payment History</h3>
-        {feeHistory.map((item, index) => (
+        {currentStudent.feeHistory.length > 0 ? (
+          currentStudent.feeHistory.map((item, index) => (
           <motion.div
             key={item.id}
             initial={{ opacity: 0, y: 20 }}
@@ -112,13 +139,15 @@ export const Fees: React.FC = () => {
             </div>
             
             <div className="text-right">
-               <p className="font-bold text-slate-900 dark:text-white">{item.amount}</p>
+               <p className="font-bold text-slate-900 dark:text-white">{item.amount === "₹ 0" ? `₹ ${monthlyFee}` : item.amount}</p>
                <button className="text-ios-blue text-sm font-medium mt-1 flex items-center gap-1 hover:underline">
                  <Download size={14} /> Invoice
                </button>
             </div>
           </motion.div>
-        ))}
+        ))) : (
+           <div className="text-center py-10 text-slate-400">No payment history found.</div>
+        )}
       </div>
 
       {/* Payment Modal */}
@@ -150,7 +179,7 @@ export const Fees: React.FC = () => {
                   </motion.div>
                   <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Payment Successful!</h3>
                   <p className="text-slate-500 dark:text-slate-400">Transaction ID: #TXN-{Math.floor(Math.random()*100000)}</p>
-                  <p className="text-slate-900 dark:text-white font-bold text-xl mt-4">₹ {amount}</p>
+                  <p className="text-slate-900 dark:text-white font-bold text-xl mt-4">₹ {amountToPay}</p>
                 </div>
               ) : (
                 <>
@@ -168,8 +197,8 @@ export const Fees: React.FC = () => {
                   <div className="px-6 -mt-12">
                      <div className="bg-white dark:bg-[#2C2C2E] p-4 rounded-2xl shadow-lg border border-slate-100 dark:border-white/5 mb-6 text-center">
                         <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide font-bold">Paying For</p>
-                        <p className="text-sm font-semibold text-slate-900 dark:text-white">Tuition Fee - Oct 2025</p>
-                        <h2 className="text-3xl font-bold text-slate-900 dark:text-white mt-1">₹ {amount}</h2>
+                        <p className="text-sm font-semibold text-slate-900 dark:text-white">Tuition Fee - Outstanding</p>
+                        <h2 className="text-3xl font-bold text-slate-900 dark:text-white mt-1">₹ {amountToPay}</h2>
                      </div>
                   </div>
                   
@@ -259,7 +288,7 @@ export const Fees: React.FC = () => {
                       {isProcessing ? (
                         <>Processing <Loader2 className="animate-spin" size={20} /></>
                       ) : (
-                        <>Pay ₹ {amount}</>
+                        <>Pay ₹ {amountToPay}</>
                       )}
                     </button>
                     

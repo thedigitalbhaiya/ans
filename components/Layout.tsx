@@ -1,5 +1,5 @@
 
-import React, { useContext, useState, useRef, useEffect } from 'react';
+import React, { useContext, useState, useRef, useEffect, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ThemeContext, AuthContext, SchoolContext } from '../App';
 import { 
@@ -19,28 +19,17 @@ import {
   ChevronRight,
   ChevronDown,
   Check,
-  IdCard
+  IdCard,
+  ArrowRightLeft
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Theme } from '../types';
 import { Logo } from './Logo';
 
-// Navigation Items
-const navItems = [
-  { path: '/', label: 'Home', icon: LayoutDashboard },
-  { path: '/attendance', label: 'Attendance', icon: CalendarDays },
-  { path: '/profile', label: 'Student ID', icon: IdCard },
-  { path: '/fees', label: 'Fees', icon: CreditCard },
-  { path: '/results', label: 'Results', icon: Trophy },
-  { path: '/timetable', label: 'Schedule', icon: Clock },
-  { path: '/circulars', label: 'Circulars', icon: Bell },
-  { path: '/application', label: 'Application', icon: FileText },
-];
-
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { theme, toggleTheme } = useContext(ThemeContext);
-  const { logout, currentStudent, allStudents, switchStudent, isLoggedIn } = useContext(AuthContext);
-  const { schoolName } = useContext(SchoolContext);
+  const { logout, currentStudent, availableProfiles, selectProfile, isLoggedIn, isAdmin } = useContext(AuthContext);
+  const { settings } = useContext(SchoolContext);
   const location = useLocation();
   const navigate = useNavigate();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -48,6 +37,32 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const menuRef = useRef<HTMLDivElement>(null);
 
   const isHome = location.pathname === '/';
+  const hasSiblings = availableProfiles.length > 1;
+
+  // Dynamic Navigation Items based on Settings
+  const navItems = useMemo(() => {
+    const items = [
+      { path: '/', label: 'Home', icon: LayoutDashboard },
+      { path: '/attendance', label: 'Attendance', icon: CalendarDays },
+      { path: '/profile', label: 'Student ID', icon: IdCard },
+    ];
+
+    if (settings.enableOnlineFees) {
+      items.push({ path: '/fees', label: 'Fees', icon: CreditCard });
+    }
+
+    if (settings.showResults) {
+      items.push({ path: '/results', label: 'Results', icon: Trophy });
+    }
+
+    items.push(
+      { path: '/timetable', label: 'Schedule', icon: Clock },
+      { path: '/circulars', label: 'Circulars', icon: Bell },
+      { path: '/application', label: 'Application', icon: FileText }
+    );
+
+    return items;
+  }, [settings]);
 
   // Responsive sidebar logic
   useEffect(() => {
@@ -78,7 +93,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
   const handleLogoClick = () => {
     if (isLoggedIn && !isCollapsed) {
-      setShowProfileMenu(!showProfileMenu);
+      if (hasSiblings) setShowProfileMenu(!showProfileMenu);
     } else {
       navigate('/profile');
     }
@@ -93,14 +108,16 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       className="absolute top-full left-0 mt-2 w-64 bg-white dark:bg-[#2C2C2E] rounded-2xl shadow-xl border border-slate-100 dark:border-white/10 overflow-hidden z-50"
     >
        <div className="p-3 bg-slate-50 dark:bg-white/5 border-b border-slate-100 dark:border-white/5">
-         <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Switch Profile</span>
+         <span className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+            <ArrowRightLeft size={14} /> Switch Sibling
+         </span>
        </div>
        <div className="p-2 space-y-1">
-         {allStudents.map((student) => (
+         {availableProfiles.map((student) => (
            <button
              key={student.admissionNo}
              onClick={() => {
-               switchStudent(student.admissionNo);
+               selectProfile(student.admissionNo);
                setShowProfileMenu(false);
                navigate('/');
              }}
@@ -121,7 +138,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 }`}>
                   {student.name.split(' ')[0]}
                 </p>
-                <p className="text-[10px] text-slate-500 truncate">Class {student.class}</p>
+                <p className="text-[10px] text-slate-500 truncate">Class {student.class}-{student.section}</p>
               </div>
               {currentStudent.admissionNo === student.admissionNo && (
                 <Check size={16} className="text-ios-blue dark:text-blue-400" />
@@ -154,10 +171,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             <Logo className="w-10 h-10 flex-shrink-0" />
             <div className={`overflow-hidden transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
               <h1 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight leading-none whitespace-nowrap">
-                {schoolName.split(' ')[0]}
+                {settings.schoolName.split(' ')[0]}
               </h1>
               <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">
-                School App
+                Student Portal
               </span>
             </div>
         </div>
@@ -166,8 +183,15 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         <div className="relative mb-6" ref={menuRef}>
           {isLoggedIn ? (
               <button 
-                 onClick={() => isCollapsed ? navigate('/profile') : setShowProfileMenu(!showProfileMenu)}
+                 onClick={() => {
+                    if (isCollapsed) {
+                        navigate('/profile');
+                    } else if (hasSiblings) {
+                        setShowProfileMenu(!showProfileMenu);
+                    }
+                 }}
                  className={`flex items-center gap-3 w-full group outline-none transition-all ${isCollapsed ? 'justify-center px-0' : 'px-4'}`}
+                 disabled={!hasSiblings && !isCollapsed} // Disable click if only 1 profile and expanded
               >
                 <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white dark:border-white/10 shadow-md ring-2 ring-slate-100 dark:ring-white/5 transition-transform group-hover:scale-105 flex-shrink-0">
                   <img src={currentStudent.avatar} alt="Profile" className="w-full h-full object-cover" />
@@ -180,7 +204,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                     ID: {currentStudent.admissionNo.split('/')[2] || '---'}
                   </span>
                 </div>
-                {!isCollapsed && <ChevronDown size={16} className={`text-slate-400 transition-transform ${showProfileMenu ? 'rotate-180' : ''}`} />}
+                {!isCollapsed && hasSiblings && <ChevronDown size={16} className={`text-slate-400 transition-transform ${showProfileMenu ? 'rotate-180' : ''}`} />}
               </button>
           ) : (
              <Link to="/profile" className={`flex items-center gap-3 w-full group ${isCollapsed ? 'justify-center px-0' : 'px-4'}`}>
@@ -195,7 +219,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           )}
           
           <AnimatePresence>
-            {showProfileMenu && !isCollapsed && <ProfileSwitcherMenu />}
+            {showProfileMenu && !isCollapsed && hasSiblings && <ProfileSwitcherMenu />}
           </AnimatePresence>
         </div>
 
@@ -254,7 +278,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
              <div className="relative" ref={menuRef}>
                {isLoggedIn ? (
                    <button 
-                      onClick={() => setShowProfileMenu(!showProfileMenu)}
+                      onClick={() => { if(hasSiblings) setShowProfileMenu(!showProfileMenu); }}
                       className="flex items-center gap-3 active:opacity-80 transition-opacity"
                    >
                      <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden border border-slate-100 dark:border-white/10 shadow-sm relative">
@@ -265,7 +289,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                           <span className="text-sm font-bold text-slate-900 dark:text-white block leading-none">
                             {currentStudent.name.split(' ')[0]}
                           </span>
-                          <ChevronDown size={12} className="text-slate-400" />
+                          {hasSiblings && <ChevronDown size={12} className="text-slate-400" />}
                         </div>
                         <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block leading-none mt-1 uppercase tracking-wider">
                           Class {currentStudent.class}
@@ -282,7 +306,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                  </Link>
                )}
                <AnimatePresence>
-                 {showProfileMenu && <ProfileSwitcherMenu />}
+                 {showProfileMenu && hasSiblings && <ProfileSwitcherMenu />}
                </AnimatePresence>
              </div>
            ) : (

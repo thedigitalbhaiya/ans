@@ -1,20 +1,33 @@
 
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, CheckCircle2, Loader2, User, MapPin, Phone, Heart, Globe, School, Bus } from 'lucide-react';
+import { SchoolContext } from '../App';
 
 export const Admission: React.FC = () => {
+  const { addAdmission } = useContext(SchoolContext);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const data = Object.fromEntries(formData.entries());
+
     setIsSubmitting(true);
     
-    // Simulate API call
     setTimeout(() => {
+      addAdmission({
+        studentName: data.studentName as string,
+        admissionForClass: data.admissionForClass as string,
+        fatherName: data.fatherName as string,
+        mobile: data.fatherMobile as string,
+        previousSchool: data.previousSchool as string,
+        address: data.address as string,
+      });
       setIsSubmitting(false);
       setIsSuccess(true);
+      e.currentTarget.reset();
     }, 2000);
   };
 
@@ -66,7 +79,7 @@ export const Admission: React.FC = () => {
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Admission for Class</label>
-                   <select required className="w-full p-4 rounded-xl bg-slate-50 dark:bg-black/20 border-none outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white font-medium">
+                   <select name="admissionForClass" required className="w-full p-4 rounded-xl bg-slate-50 dark:bg-black/20 border-none outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white font-medium">
                      <option value="">Select Class</option>
                      <option>Nursery</option>
                      <option>LKG</option>
@@ -92,7 +105,7 @@ export const Admission: React.FC = () => {
                 </div>
                 <div className="space-y-2 md:col-span-2">
                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Previous School Studied</label>
-                   <input required type="text" placeholder="Name of previous school" className="w-full p-4 rounded-xl bg-slate-50 dark:bg-black/20 border-none outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white font-medium" />
+                   <input name="previousSchool" required type="text" placeholder="Name of previous school" className="w-full p-4 rounded-xl bg-slate-50 dark:bg-black/20 border-none outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white font-medium" />
                 </div>
              </div>
           </div>
@@ -107,7 +120,7 @@ export const Admission: React.FC = () => {
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Student Name</label>
-                   <input required type="text" className="w-full p-4 rounded-xl bg-slate-50 dark:bg-black/20 border-none outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white font-medium" />
+                   <input name="studentName" required type="text" className="w-full p-4 rounded-xl bg-slate-50 dark:bg-black/20 border-none outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white font-medium" />
                 </div>
                 <div className="space-y-2">
                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Date of Birth</label>
@@ -136,40 +149,7 @@ export const Admission: React.FC = () => {
              </div>
           </div>
 
-          {/* Section 3: Social Info */}
-          <div className="space-y-6">
-             <div className="flex items-center gap-3 border-b border-slate-100 dark:border-white/5 pb-2">
-                <Globe className="text-ios-blue dark:text-blue-400" size={24} />
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-widest">Social Category</h3>
-             </div>
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="space-y-2">
-                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Religion</label>
-                   <select className="w-full p-4 rounded-xl bg-slate-50 dark:bg-black/20 border-none outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white font-medium">
-                     <option>Hindu</option>
-                     <option>Muslim</option>
-                     <option>Christian</option>
-                     <option>Sikh</option>
-                     <option>Other</option>
-                   </select>
-                </div>
-                <div className="space-y-2">
-                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Category</label>
-                   <select className="w-full p-4 rounded-xl bg-slate-50 dark:bg-black/20 border-none outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white font-medium">
-                     <option>General</option>
-                     <option>OBC</option>
-                     <option>SC</option>
-                     <option>ST</option>
-                   </select>
-                </div>
-                <div className="space-y-2">
-                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Caste</label>
-                   <input type="text" className="w-full p-4 rounded-xl bg-slate-50 dark:bg-black/20 border-none outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white font-medium" />
-                </div>
-             </div>
-          </div>
-
-          {/* Section 4: Parents Info */}
+          {/* Section 3: Parents Info */}
           <div className="space-y-6">
              <div className="flex items-center gap-3 border-b border-slate-100 dark:border-white/5 pb-2">
                 <User className="text-ios-blue dark:text-blue-400" size={24} />
@@ -178,11 +158,11 @@ export const Admission: React.FC = () => {
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Father's Name</label>
-                   <input required type="text" className="w-full p-4 rounded-xl bg-slate-50 dark:bg-black/20 border-none outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white font-medium" />
+                   <input name="fatherName" required type="text" className="w-full p-4 rounded-xl bg-slate-50 dark:bg-black/20 border-none outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white font-medium" />
                 </div>
                 <div className="space-y-2">
                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Father's Contact Number</label>
-                   <input required type="tel" className="w-full p-4 rounded-xl bg-slate-50 dark:bg-black/20 border-none outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white font-medium" />
+                   <input name="fatherMobile" required type="tel" className="w-full p-4 rounded-xl bg-slate-50 dark:bg-black/20 border-none outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white font-medium" />
                 </div>
                 <div className="space-y-2">
                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Mother's Name</label>
@@ -195,61 +175,16 @@ export const Admission: React.FC = () => {
              </div>
           </div>
 
-          {/* Section 5: Address */}
+          {/* Section 4: Address */}
           <div className="space-y-6">
              <div className="flex items-center gap-3 border-b border-slate-100 dark:border-white/5 pb-2">
                 <MapPin className="text-ios-blue dark:text-blue-400" size={24} />
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-widest">Address</h3>
              </div>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+             <div className="grid grid-cols-1 gap-6">
                 <div className="space-y-2">
                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Present Address</label>
-                   <textarea rows={3} className="w-full p-4 rounded-xl bg-slate-50 dark:bg-black/20 border-none outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white font-medium resize-none"></textarea>
-                </div>
-                <div className="space-y-2">
-                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Permanent Address</label>
-                   <textarea rows={3} className="w-full p-4 rounded-xl bg-slate-50 dark:bg-black/20 border-none outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white font-medium resize-none"></textarea>
-                </div>
-             </div>
-          </div>
-
-          {/* Section 6: Health & Transport */}
-          <div className="space-y-6">
-             <div className="flex items-center gap-3 border-b border-slate-100 dark:border-white/5 pb-2">
-                <Heart className="text-ios-blue dark:text-blue-400" size={24} />
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-widest">Health & Transport</h3>
-             </div>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Blood Group</label>
-                   <select className="w-full p-4 rounded-xl bg-slate-50 dark:bg-black/20 border-none outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white font-medium">
-                     <option>A+</option>
-                     <option>A-</option>
-                     <option>B+</option>
-                     <option>B-</option>
-                     <option>O+</option>
-                     <option>O-</option>
-                     <option>AB+</option>
-                     <option>AB-</option>
-                   </select>
-                </div>
-                <div className="space-y-2">
-                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Differently Abled</label>
-                   <select className="w-full p-4 rounded-xl bg-slate-50 dark:bg-black/20 border-none outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white font-medium">
-                     <option>No</option>
-                     <option>Yes</option>
-                   </select>
-                </div>
-                <div className="space-y-2">
-                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Health Issues (if any)</label>
-                   <input type="text" className="w-full p-4 rounded-xl bg-slate-50 dark:bg-black/20 border-none outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white font-medium" />
-                </div>
-                <div className="space-y-2">
-                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Transport Location</label>
-                   <div className="relative">
-                      <Bus className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                      <input type="text" placeholder="Pickup point" className="w-full pl-12 p-4 rounded-xl bg-slate-50 dark:bg-black/20 border-none outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white font-medium" />
-                   </div>
+                   <textarea name="address" required rows={3} className="w-full p-4 rounded-xl bg-slate-50 dark:bg-black/20 border-none outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white font-medium resize-none"></textarea>
                 </div>
              </div>
           </div>

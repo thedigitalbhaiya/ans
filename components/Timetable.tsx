@@ -1,16 +1,23 @@
 
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, MoreHorizontal, Calendar } from 'lucide-react';
-import { timetableSchedule } from '../data';
+import { AuthContext, SchoolContext } from '../App';
 
 const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 export const Timetable: React.FC = () => {
+  const { currentStudent } = useContext(AuthContext);
+  const { timetable: timetableSchedule } = useContext(SchoolContext);
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
   const [selectedDay, setSelectedDay] = useState(days.includes(today) ? today : "Monday");
 
-  const schedule = timetableSchedule[selectedDay] || [];
+  // Fix: Get schedule for the specific student's class
+  const studentClassKey = `${currentStudent.class}-${currentStudent.section}`;
+  const rawSchedule = timetableSchedule[studentClassKey]?.[selectedDay] || [];
+  
+  // SORT BY PERIOD
+  const schedule = [...rawSchedule].sort((a, b) => a.period - b.period);
 
   return (
     <div className="space-y-6">
@@ -83,7 +90,7 @@ export const Timetable: React.FC = () => {
                                 item.type === 'lab' ? 'bg-purple-100 text-purple-600' :
                                 'bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400'}
                             `}>
-                              {item.type}
+                              {item.type} • Period {item.period}
                             </span>
                           </div>
                           
