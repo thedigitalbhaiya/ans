@@ -150,6 +150,7 @@ export type FeeStructure = Record<string, number>;
 export interface ExamResult {
   name: string; // Subject Name
   score: number;
+  maxScore?: number; // Optional max score for this subject (e.g. 40, 80, 100)
   grade: string;
   color: string;
 }
@@ -225,6 +226,15 @@ export interface Feedback {
   status: 'Unread' | 'Read' | 'Resolved';
 }
 
+export interface Achievement {
+  id: number;
+  studentId: string; // Links to Student.admissionNo
+  studentName: string; // Snapshot in case student is deleted
+  title: string; // e.g. "1st Place - Annual Sports"
+  category: 'Gold' | 'Silver' | 'Bronze' | 'Special';
+  date: string;
+  description?: string;
+}
 
 export enum Theme {
   LIGHT = 'light',

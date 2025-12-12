@@ -7,27 +7,9 @@ import { Link } from 'react-router-dom';
 
 export const Feedback: React.FC = () => {
   const { addFeedback } = useContext(SchoolContext);
-  const { isLoggedIn, currentStudent } = useContext(AuthContext);
+  const { currentStudent } = useContext(AuthContext);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
-
-  // If not logged in, show lock screen
-  if (!isLoggedIn) {
-      return (
-         <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-24 h-24 bg-slate-100 dark:bg-white/5 rounded-full flex items-center justify-center mb-6 text-slate-400">
-               <MessageSquare size={40} />
-            </div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Feedback Locked</h2>
-            <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-xs mx-auto">
-               Please login to submit complaints, suggestions, or appreciation.
-            </p>
-            <Link to="/profile" className="mt-8 px-8 py-3 bg-slate-900 dark:bg-white text-white dark:text-black font-bold rounded-xl flex items-center gap-2 hover:scale-105 transition-transform">
-               <LogIn size={20} /> Login Now
-            </Link>
-         </div>
-      );
-  }
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

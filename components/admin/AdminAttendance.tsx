@@ -1,14 +1,16 @@
 
-import React, { useContext, useState, useMemo, useEffect } from 'react';
+import React, { useContext, useState, useMemo, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, Check, X, Clock, Save, ChevronDown, Filter, Lock } from 'lucide-react';
+import { Calendar, Check, X, Clock, Save, ChevronDown, Filter, Lock, UploadCloud, Download, FileSpreadsheet } from 'lucide-react';
 import { AuthContext, SchoolContext } from '../../App';
+import Papa from 'papaparse';
 
 export const AdminAttendance: React.FC = () => {
   const { allStudents, currentAdmin } = useContext(AuthContext);
   const { attendance: globalAttendance, setAttendance: setGlobalAttendance } = useContext(SchoolContext);
   
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Logic for Class Teacher View Locking
   const isTeacher = currentAdmin?.role === 'Teacher';
@@ -66,6 +68,42 @@ export const AdminAttendance: React.FC = () => {
     alert(`Attendance for ${date} saved successfully!`);
   };
 
+  // CSV Operations
+  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const newDaily = { ...dailyAttendance };
+        results.data.forEach((row: any) => {
+           const id = row.admissionNo || row.ID;
+           const status = row.status?.toLowerCase();
+           if (id && ['present','absent','late'].includes(status)) {
+              newDaily[id] = status as 'present' | 'absent' | 'late';
+           } else if (id && status === 'p') newDaily[id] = 'present';
+           else if (id && status === 'a') newDaily[id] = 'absent';
+           else if (id && status === 'l') newDaily[id] = 'late';
+        });
+        setDailyAttendance(newDaily);
+        alert(`Imported status for ${results.data.length} students. Click Save to confirm.`);
+        if(fileInputRef.current) fileInputRef.current.value = '';
+      }
+    });
+  };
+
+  const handleDownloadTemplate = () => {
+    const header = "admissionNo,name,status";
+    const rows = filteredStudents.map(s => `${s.admissionNo},${s.name},present`).join('\n');
+    const blob = new Blob([`${header}\n${rows}`], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `attendance_template_${date}.csv`;
+    a.click();
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -85,18 +123,30 @@ export const AdminAttendance: React.FC = () => {
         </div>
       </div>
 
-      {/* Filters */}
-      {isTeacher ? (
-         <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-500/10 rounded-xl text-blue-700 dark:text-blue-300 font-bold border border-blue-100 dark:border-blue-500/20 whitespace-nowrap w-fit">
-            <Lock size={16} /> 
-            <span>My Class: {teacherClass}-{teacherSection}</span>
-         </div>
-      ) : (
+      {/* Filters & Bulk Tools */}
+      <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white dark:bg-[#1C1C1E] p-3 rounded-[1.5rem] border border-slate-100 dark:border-white/5">
+         {isTeacher ? (
+            <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-500/10 rounded-xl text-blue-700 dark:text-blue-300 font-bold border border-blue-100 dark:border-blue-500/20 whitespace-nowrap w-fit">
+               <Lock size={16} /> 
+               <span>My Class: {teacherClass}-{teacherSection}</span>
+            </div>
+         ) : (
+            <div className="flex gap-2">
+               <FilterDropdown label="Class" options={uniqueClasses} selected={selectedClass} onSelect={setSelectedClass} />
+               <FilterDropdown label="Section" options={uniqueSections} selected={selectedSection} onSelect={setSelectedSection} />
+            </div>
+         )}
+
          <div className="flex gap-2">
-            <FilterDropdown label="Class" options={uniqueClasses} selected={selectedClass} onSelect={setSelectedClass} />
-            <FilterDropdown label="Section" options={uniqueSections} selected={selectedSection} onSelect={setSelectedSection} />
+            <input type="file" accept=".csv" ref={fileInputRef} className="hidden" onChange={handleImportCSV} />
+            <button onClick={() => fileInputRef.current?.click()} className="p-2.5 rounded-xl bg-slate-50 dark:bg-white/5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors flex items-center gap-2 text-sm font-bold" title="Import CSV">
+               <UploadCloud size={18} /> <span className="hidden sm:inline">Import</span>
+            </button>
+            <button onClick={handleDownloadTemplate} className="p-2.5 rounded-xl bg-slate-50 dark:bg-white/5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors flex items-center gap-2 text-sm font-bold" title="Download Template">
+               <Download size={18} /> <span className="hidden sm:inline">Template</span>
+            </button>
          </div>
-      )}
+      </div>
 
       {/* List */}
       <div className="bg-white dark:bg-[#1C1C1E] rounded-[2rem] shadow-sm border border-slate-100 dark:border-white/5 overflow-hidden">

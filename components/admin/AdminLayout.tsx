@@ -31,7 +31,10 @@ import {
   Save,
   Loader2,
   UserCog,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Grid,
+  X,
+  Award
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Theme, AdminUser } from '../../types';
@@ -47,6 +50,7 @@ const adminNavItems = [
   { path: '/admin/homework', label: 'Homework', icon: BookOpen }, 
   { path: '/admin/circulars', label: 'Circulars', icon: Bell },
   { path: '/admin/gallery', label: 'e-Magazine', icon: Image },
+  { path: '/admin/achievements', label: 'Achievements', icon: Award }, // NEW
   { path: '/admin/applications', label: 'Applications', icon: FileText },
   { path: '/admin/admissions', label: 'Admissions', icon: UserPlus },
   { path: '/admin/socials', label: 'Community', icon: MessageCircle },
@@ -65,6 +69,7 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -82,17 +87,15 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
   // Filter Nav Items based on Role
   const visibleNavItems = useMemo(() => {
     return adminNavItems.filter(item => {
-      // Hide Settings for non-Super Admins
-      if (item.path === '/admin/settings' && currentAdmin?.role !== 'Super Admin') {
-        return false;
-      }
-      // Hide Fees for Teachers
-      if (item.path === '/admin/fees' && currentAdmin?.role === 'Teacher') {
-        return false;
-      }
+      if (item.path === '/admin/settings' && currentAdmin?.role !== 'Super Admin') return false;
+      if (item.path === '/admin/fees' && currentAdmin?.role === 'Teacher') return false;
       return true;
     });
   }, [currentAdmin]);
+
+  // Primary Mobile Items (Bottom Dock)
+  const mobilePrimaryItems = visibleNavItems.slice(0, 4);
+  const mobileSecondaryItems = visibleNavItems.slice(4);
 
   // Close notifications on outside click
   useEffect(() => {
@@ -105,9 +108,7 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const unreadFeedbackCount = feedback.filter(f => f.status === 'Unread').length;
@@ -126,9 +127,8 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Function to format time ago (simple version)
   const timeAgo = (dateStr: string) => {
-    const diff = Math.floor((new Date().getTime() - new Date(dateStr).getTime()) / 60000); // minutes
+    const diff = Math.floor((new Date().getTime() - new Date(dateStr).getTime()) / 60000);
     if (diff < 1) return 'Just now';
     if (diff < 60) return `${diff} mins ago`;
     const hours = Math.floor(diff / 60);
@@ -144,10 +144,12 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-ios-bg dark:bg-black font-sans transition-colors duration-500">
+      
+      {/* DESKTOP SIDEBAR (Hidden on Mobile) */}
       <aside 
-        className={`flex flex-col h-full bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-2xl border-r border-ios-divider/20 dark:border-white/10 pt-8 pb-6 transition-all duration-300 z-20 relative ${
+        className={`hidden lg:flex flex-col h-full bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-2xl border-r border-ios-separator/20 transition-all duration-300 z-20 relative ${
           isCollapsed ? 'w-20 px-2' : 'w-72 px-4'
-        }`}
+        } pt-8 pb-6`}
       >
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
@@ -201,7 +203,6 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
                 } ${isCollapsed ? 'justify-center' : 'px-4'}`}>
                   <div className="relative">
                      <Icon size={20} className="flex-shrink-0" strokeWidth={2.5} />
-                     {/* Badge for Unread Feedback */}
                      {isFeedback && unreadFeedbackCount > 0 && (
                         <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-[#1C1C1E] animate-pulse"></div>
                      )}
@@ -211,7 +212,6 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
                     {item.label}
                   </span>
                   
-                  {/* Count Label for Expanded Menu */}
                   {isFeedback && !isCollapsed && unreadFeedbackCount > 0 && (
                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${isActive ? 'bg-white/20 text-white' : 'bg-red-100 text-red-600'}`}>
                         {unreadFeedbackCount}
@@ -234,21 +234,17 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
         </div>
       </aside>
 
+      {/* MAIN CONTENT */}
       <main className="flex-1 h-full overflow-y-auto overflow-x-hidden relative no-scrollbar bg-ios-bg dark:bg-black transition-colors duration-500 flex flex-col">
-        {/* TOP HEADER BAR */}
-        <header className="sticky top-0 z-30 flex items-center justify-between px-6 py-4 bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-xl border-b border-ios-divider/10 dark:border-white/5">
-           
-           {/* Breadcrumb / Title placeholder */}
+        {/* TOP HEADER */}
+        <header className="sticky top-0 z-30 flex items-center justify-between px-6 py-4 bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-xl border-b border-ios-separator/10">
            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm font-medium">
               <Link to="/admin/dashboard" className="hover:text-ios-blue transition-colors">Admin</Link>
               <ChevronRight size={14} />
-              <span className="text-slate-900 dark:text-white capitalize">{location.pathname.split('/').pop()}</span>
+              <span className="text-slate-900 dark:text-white capitalize truncate max-w-[120px]">{location.pathname.split('/').pop()}</span>
            </div>
 
-           {/* Right Actions */}
-           <div className="flex items-center gap-4">
-              
-              {/* Notification Bell */}
+           <div className="flex items-center gap-3">
               <div className="relative" ref={notifRef}>
                  <button 
                    onClick={() => setShowNotifications(!showNotifications)}
@@ -259,8 +255,6 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
                        <span className="absolute top-1.5 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-[#1C1C1E]"></span>
                     )}
                  </button>
-
-                 {/* Notifications Dropdown */}
                  <AnimatePresence>
                     {showNotifications && (
                        <motion.div 
@@ -272,16 +266,12 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
                           <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/5">
                              <h3 className="font-bold text-slate-900 dark:text-white">Notifications</h3>
                              {unreadCount > 0 && (
-                                <button 
-                                  onClick={markAllAsRead}
-                                  className="text-xs font-bold text-ios-blue flex items-center gap-1 hover:underline"
-                                >
+                                <button onClick={markAllAsRead} className="text-xs font-bold text-ios-blue flex items-center gap-1 hover:underline">
                                    <CheckCheck size={14} /> Mark all read
                                 </button>
                              )}
                           </div>
-                          
-                          <div className="max-h-[400px] overflow-y-auto no-scrollbar">
+                          <div className="max-h-[300px] overflow-y-auto no-scrollbar">
                              {notifications.length > 0 ? (
                                 notifications.map((notif) => (
                                    <button 
@@ -313,22 +303,12 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
                  </AnimatePresence>
               </div>
 
-              {/* Profile Shortcut */}
               <div className="relative" ref={profileRef}>
-                 <button 
-                   onClick={() => setShowProfileMenu(!showProfileMenu)}
-                   className="flex items-center gap-2 group outline-none"
-                 >
+                 <button onClick={() => setShowProfileMenu(!showProfileMenu)} className="flex items-center gap-2 group outline-none">
                     <div className="w-9 h-9 rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden border border-slate-300 dark:border-white/20 transition-transform group-hover:scale-105">
                        <img src={currentAdmin?.photo || `https://ui-avatars.com/api/?name=${currentAdmin?.name || 'Admin'}`} alt="Admin" className="w-full h-full object-cover" />
                     </div>
-                    <div className="hidden md:block text-left">
-                       <p className="text-xs font-bold text-slate-900 dark:text-white leading-none">{currentAdmin?.name?.split(' ')[0]}</p>
-                       <p className="text-xs text-slate-500 leading-none mt-0.5">{currentAdmin?.role}</p>
-                    </div>
                  </button>
-
-                 {/* Profile Menu Dropdown */}
                  <AnimatePresence>
                     {showProfileMenu && (
                        <motion.div 
@@ -341,53 +321,12 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
                              <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{currentAdmin?.name}</p>
                              <p className="text-xs text-slate-500 truncate">@{currentAdmin?.username}</p>
                           </div>
-                          
-                          <button 
-                             onClick={() => { setShowProfileMenu(false); setShowProfileModal(true); }}
-                             className="w-full text-left px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 flex items-center gap-2"
-                          >
-                             <User size={16} /> My Profile
-                          </button>
-                          
+                          <button onClick={() => { setShowProfileMenu(false); setShowProfileModal(true); }} className="w-full text-left px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 flex items-center gap-2"><User size={16} /> My Profile</button>
                           {currentAdmin?.role === 'Super Admin' && (
-                             <button 
-                                onClick={() => { setShowProfileMenu(false); navigate('/admin/users'); }}
-                                className="w-full text-left px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 flex items-center gap-2"
-                             >
-                                <UserCog size={16} /> Manage Staff
-                             </button>
+                             <button onClick={() => { setShowProfileMenu(false); navigate('/admin/users'); }} className="w-full text-left px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 flex items-center gap-2"><UserCog size={16} /> Manage Staff</button>
                           )}
-
-                          {/* Quick Profile Switcher */}
-                          {adminUsers.length > 1 && (
-                             <div className="border-t border-slate-100 dark:border-white/5 mt-1 pt-1">
-                                <p className="px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Switch Account</p>
-                                {adminUsers.filter(u => u.id !== currentAdmin?.id).map(user => (
-                                   <button
-                                      key={user.id}
-                                      onClick={() => handleSwitchProfile(user)}
-                                      className="w-full text-left px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 flex items-center gap-3 transition-colors"
-                                   >
-                                      <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden flex-shrink-0">
-                                         <img src={user.photo} alt="" className="w-full h-full object-cover" />
-                                      </div>
-                                      <div className="flex-1 min-w-0">
-                                         <p className="truncate text-xs font-bold text-slate-900 dark:text-white">{user.name}</p>
-                                         <p className="truncate text-[10px] text-slate-500">{user.role}</p>
-                                      </div>
-                                      <ArrowRightLeft size={12} className="text-slate-400" />
-                                   </button>
-                                ))}
-                             </div>
-                          )}
-                          
                           <div className="border-t border-slate-100 dark:border-white/5 mt-1 pt-1">
-                             <button 
-                                onClick={logout}
-                                className="w-full text-left px-4 py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 flex items-center gap-2"
-                             >
-                                <LogOut size={16} /> Logout
-                             </button>
+                             <button onClick={logout} className="w-full text-left px-4 py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 flex items-center gap-2"><LogOut size={16} /> Logout</button>
                           </div>
                        </motion.div>
                     )}
@@ -396,7 +335,7 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
            </div>
         </header>
 
-        <div className="max-w-7xl mx-auto p-6 md:p-10 w-full flex-1">
+        <div className="max-w-7xl mx-auto p-5 pb-32 md:pb-10 w-full flex-1">
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
@@ -411,16 +350,101 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
         </div>
       </main>
 
-      {/* MY PROFILE MODAL */}
+      {/* MOBILE BOTTOM DOCK (Dynamic Island Style) */}
+      <nav className="lg:hidden fixed bottom-6 left-4 right-4 z-50">
+        <div className="bg-white/90 dark:bg-[#1C1C1E]/90 backdrop-blur-2xl rounded-[2rem] shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] border border-white/20 dark:border-white/5 p-1.5 flex justify-between items-center">
+          {mobilePrimaryItems.map((item) => {
+            const isActive = location.pathname.startsWith(item.path);
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={() => setShowMobileMenu(false)}
+                className={`relative flex flex-col items-center justify-center w-14 h-14 rounded-[1.5rem] transition-all duration-300 ${isActive ? 'text-white' : 'text-slate-400 dark:text-slate-500'}`}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="mobile-dock-active"
+                    className="absolute inset-0 bg-ios-blue shadow-lg shadow-ios-blue/30 rounded-[1.5rem]"
+                    initial={false}
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  />
+                )}
+                <div className="relative z-10 flex flex-col items-center gap-0.5">
+                   <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
+                </div>
+              </Link>
+            );
+          })}
+          
+          {/* Apps Button */}
+          <button
+            onClick={() => setShowMobileMenu(!showMobileMenu)}
+            className={`relative flex flex-col items-center justify-center w-14 h-14 rounded-[1.5rem] transition-all duration-300 ${showMobileMenu ? 'text-white' : 'text-slate-400 dark:text-slate-500'}`}
+          >
+             {showMobileMenu && (
+                <motion.div
+                   layoutId="mobile-dock-active"
+                   className="absolute inset-0 bg-slate-900 dark:bg-white shadow-lg rounded-[1.5rem]"
+                   initial={false}
+                   transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                />
+             )}
+             <div className={`relative z-10 ${showMobileMenu ? 'text-white dark:text-black' : ''}`}>
+                {showMobileMenu ? <X size={24} strokeWidth={2.5} /> : <Grid size={24} />}
+             </div>
+          </button>
+        </div>
+      </nav>
+
+      {/* MOBILE APP LIBRARY OVERLAY */}
+      <AnimatePresence>
+         {showMobileMenu && (
+            <motion.div
+               initial={{ opacity: 0, y: '100%' }}
+               animate={{ opacity: 1, y: 0 }}
+               exit={{ opacity: 0, y: '100%' }}
+               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+               className="fixed inset-0 z-40 bg-slate-50/95 dark:bg-black/95 backdrop-blur-xl pt-24 px-6 pb-32 overflow-y-auto"
+            >
+               <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6 tracking-tight">App Library</h2>
+               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {mobileSecondaryItems.map((item) => (
+                     <Link 
+                        key={item.path} 
+                        to={item.path} 
+                        onClick={() => setShowMobileMenu(false)}
+                        className="flex flex-col items-center gap-3 p-4 rounded-[1.5rem] bg-white dark:bg-[#1C1C1E] shadow-sm active:scale-95 transition-transform"
+                     >
+                        <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-white/10 flex items-center justify-center text-ios-blue">
+                           <item.icon size={24} />
+                        </div>
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{item.label}</span>
+                     </Link>
+                  ))}
+                  
+                  {/* Theme Toggle */}
+                  <button 
+                     onClick={toggleTheme}
+                     className="flex flex-col items-center gap-3 p-4 rounded-[1.5rem] bg-white dark:bg-[#1C1C1E] shadow-sm active:scale-95 transition-transform"
+                  >
+                     <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-500">
+                        {theme === Theme.LIGHT ? <Moon size={24} /> : <Sun size={24} />}
+                     </div>
+                     <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{theme === Theme.LIGHT ? 'Dark Mode' : 'Light Mode'}</span>
+                  </button>
+               </div>
+            </motion.div>
+         )}
+      </AnimatePresence>
+
       <AnimatePresence>
          {showProfileModal && currentAdmin && (
             <MyProfileModal 
                admin={currentAdmin} 
                onClose={() => setShowProfileModal(false)} 
-               onSave={(updated) => {
-                  updateAdminProfile(updated);
-                  setShowProfileModal(false);
-               }}
+               onSave={(updated) => { updateAdminProfile(updated); setShowProfileModal(false); }} 
             />
          )}
       </AnimatePresence>
@@ -428,124 +452,40 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
   );
 };
 
-// --- MY PROFILE MODAL COMPONENT ---
+// ... MyProfileModal (Same as before)
 const MyProfileModal: React.FC<{ admin: AdminUser, onClose: () => void, onSave: (admin: AdminUser) => void }> = ({ admin, onClose, onSave }) => {
-   const [formData, setFormData] = useState({
-      name: admin.name,
-      username: admin.username,
-      mobile: admin.mobile,
-      password: admin.password,
-      newPassword: '',
-      photo: admin.photo
-   });
+   const [formData, setFormData] = useState({ name: admin.name, username: admin.username, mobile: admin.mobile, password: admin.password, newPassword: '', photo: admin.photo });
    const [isSaving, setIsSaving] = useState(false);
    const fileRef = useRef<HTMLInputElement>(null);
-
    const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) {
          const reader = new FileReader();
-         reader.onloadend = () => {
-            setFormData(prev => ({ ...prev, photo: reader.result as string }));
-         };
+         reader.onloadend = () => { setFormData(prev => ({ ...prev, photo: reader.result as string })); };
          reader.readAsDataURL(file);
       }
    };
-
-   const handleSubmit = (e: React.FormEvent) => {
-      e.preventDefault();
-      setIsSaving(true);
-      
-      // Simulate API call
-      setTimeout(() => {
-         onSave({
-            ...admin,
-            name: formData.name,
-            photo: formData.photo,
-            password: formData.newPassword ? formData.newPassword : formData.password
-         });
-         setIsSaving(false);
-      }, 800);
-   };
-
+   const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); setIsSaving(true); setTimeout(() => { onSave({ ...admin, name: formData.name, photo: formData.photo, password: formData.newPassword ? formData.newPassword : formData.password }); setIsSaving(false); }, 800); };
    return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-         <motion.div 
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={onClose}
-         />
-         <motion.div 
-            initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-            className="relative bg-white dark:bg-[#1C1C1E] w-full max-w-md rounded-[2rem] shadow-2xl p-6 md:p-8"
-         >
+         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+         <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white dark:bg-[#1C1C1E] w-full max-w-md rounded-[2rem] shadow-2xl p-6 md:p-8">
             <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6">Edit Profile</h2>
-            
             <form onSubmit={handleSubmit} className="space-y-6">
-               {/* Photo Upload */}
                <div className="flex flex-col items-center">
                   <div className="relative w-24 h-24 rounded-full overflow-hidden border-4 border-slate-100 dark:border-white/10 group cursor-pointer" onClick={() => fileRef.current?.click()}>
                      <img src={formData.photo || `https://ui-avatars.com/api/?name=${formData.name}`} className="w-full h-full object-cover" alt="Profile" />
-                     <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Camera className="text-white" size={24} />
-                     </div>
+                     <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Camera className="text-white" size={24} /></div>
                   </div>
                   <input type="file" ref={fileRef} className="hidden" accept="image/*" onChange={handlePhotoChange} />
-                  <p className="text-xs text-slate-400 mt-2">Click to change photo</p>
                </div>
-
                <div className="space-y-4">
-                  <div>
-                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Full Name</label>
-                     <input 
-                        type="text" 
-                        value={formData.name} 
-                        onChange={(e) => setFormData({...formData, name: e.target.value})}
-                        className="w-full p-3 rounded-xl bg-slate-50 dark:bg-black/20 border-none outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white font-medium mt-1"
-                        required
-                     />
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                     <div>
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Username</label>
-                        <input 
-                           type="text" 
-                           value={formData.username} 
-                           disabled
-                           className="w-full p-3 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-500 mt-1 cursor-not-allowed"
-                        />
-                     </div>
-                     <div>
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Role</label>
-                        <input 
-                           type="text" 
-                           value={admin.role} 
-                           disabled
-                           className="w-full p-3 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-500 mt-1 cursor-not-allowed"
-                        />
-                     </div>
-                  </div>
-
-                  <div className="pt-4 border-t border-slate-100 dark:border-white/5">
-                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                        <Key size={14} /> Change Password
-                     </label>
-                     <input 
-                        type="password" 
-                        placeholder="Leave blank to keep current"
-                        value={formData.newPassword} 
-                        onChange={(e) => setFormData({...formData, newPassword: e.target.value})}
-                        className="w-full p-3 rounded-xl bg-slate-50 dark:bg-black/20 border-none outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white mt-2"
-                     />
-                  </div>
+                  <div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Full Name</label><input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full p-3 rounded-xl bg-slate-50 dark:bg-black/20 border-none outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white font-medium mt-1" required /></div>
+                  <div className="pt-4 border-t border-slate-100 dark:border-white/5"><label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2"><Key size={14} /> Change Password</label><input type="password" placeholder="Leave blank to keep current" value={formData.newPassword} onChange={(e) => setFormData({...formData, newPassword: e.target.value})} className="w-full p-3 rounded-xl bg-slate-50 dark:bg-black/20 border-none outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white mt-2" /></div>
                </div>
-
                <div className="flex gap-3 pt-2">
                   <button type="button" onClick={onClose} className="flex-1 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10">Cancel</button>
-                  <button type="submit" disabled={isSaving} className="flex-1 py-3 bg-ios-blue text-white rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-transform disabled:opacity-70">
-                     {isSaving ? <Loader2 className="animate-spin" size={20} /> : <><Save size={18} /> Save Changes</>}
-                  </button>
+                  <button type="submit" disabled={isSaving} className="flex-1 py-3 bg-ios-blue text-white rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-transform disabled:opacity-70">{isSaving ? <Loader2 className="animate-spin" size={20} /> : <><Save size={18} /> Save Changes</>}</button>
                </div>
             </form>
          </motion.div>

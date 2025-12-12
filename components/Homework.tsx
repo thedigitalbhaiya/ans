@@ -6,7 +6,7 @@ import { SchoolContext, AuthContext } from '../App';
 import { Link } from 'react-router-dom';
 
 export const Homework: React.FC = () => {
-  const { isLoggedIn, currentStudent } = useContext(AuthContext);
+  const { currentStudent } = useContext(AuthContext);
   const { homework, settings } = useContext(SchoolContext);
   const [filter, setFilter] = useState('All');
   
@@ -25,25 +25,7 @@ export const Homework: React.FC = () => {
      );
   }
 
-  // 2. AUTH GUARD
-  if (!isLoggedIn) {
-      return (
-         <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-24 h-24 bg-slate-100 dark:bg-white/5 rounded-full flex items-center justify-center mb-6 text-slate-400">
-               <BookOpen size={40} />
-            </div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Homework Locked</h2>
-            <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-xs mx-auto">
-               Please login to view your assigned homework and project deadlines.
-            </p>
-            <Link to="/profile" className="mt-8 px-8 py-3 bg-slate-900 dark:bg-white text-white dark:text-black font-bold rounded-xl flex items-center gap-2 hover:scale-105 transition-transform">
-               <LogIn size={20} /> Login Now
-            </Link>
-         </div>
-      );
-  }
-
-  // 3. SMART FILTERING: Filter by Class & Status
+  // 2. SMART FILTERING: Filter by Class & Status
   const filteredTasks = useMemo(() => {
      return homework
         .filter(task => task.targetClass === currentStudent.class) // CLASS FILTER
@@ -63,14 +45,14 @@ export const Homework: React.FC = () => {
         </div>
         
         {/* Filter Pills */}
-        <div className="flex p-1 bg-white dark:bg-[#1C1C1E] rounded-full border border-slate-100 dark:border-white/5 shadow-sm overflow-hidden">
+        <div className="flex p-1 bg-white dark:bg-[#1C1C1E] rounded-full border border-slate-100 dark:border-white/5 shadow-sm overflow-hidden w-fit">
            {['All', 'Pending', 'Completed'].map((f) => {
              const isActive = filter === f;
              return (
                <button 
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`relative px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 z-10 ${
+                className={`relative px-6 py-2 rounded-full text-sm font-bold transition-all duration-300 z-10 ${
                   isActive 
                     ? 'text-white' 
                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -117,7 +99,7 @@ export const Homework: React.FC = () => {
               </button>
 
               <div className="flex-1 min-w-0">
-                <div className="flex flex-wrap items-center gap-2 mb-1">
+                <div className="flex flex-wrap items-center gap-2 mb-2">
                   <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400`}>
                     {task.subject}
                   </span>
@@ -127,14 +109,14 @@ export const Homework: React.FC = () => {
                     </span>
                   )}
                 </div>
-                <h3 className={`text-lg font-semibold text-slate-900 dark:text-white truncate ${task.status === 'completed' ? 'line-through text-slate-400' : ''}`}>
+                <h3 className={`text-lg font-bold text-slate-900 dark:text-white truncate ${task.status === 'completed' ? 'line-through text-slate-400' : ''}`}>
                   {task.title}
                 </h3>
                 {task.description && (
-                   <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{task.description}</p>
+                   <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed">{task.description}</p>
                 )}
                 
-                <p className="text-[10px] text-slate-400 mt-2">Posted on {task.postedDate}</p>
+                <p className="text-[10px] text-slate-400 mt-2 font-bold">Posted on {task.postedDate}</p>
               </div>
 
               {/* Decorative Icon */}

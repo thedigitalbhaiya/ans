@@ -14,7 +14,8 @@ import { Gallery } from './components/Gallery';
 import { Feedback } from './components/Feedback';
 import { Application } from './components/Application';
 import { Admission } from './components/Admission';
-import { ProfileSelector } from './components/auth/ProfileSelector'; // New Component
+import { Achievements } from './components/Achievements'; // New Component
+import { ProfileSelector } from './components/auth/ProfileSelector';
 import { AdminLayout } from './components/admin/AdminLayout';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import { AdminStudents } from './components/admin/AdminStudents';
@@ -31,9 +32,10 @@ import { AdminFeedback } from './components/admin/AdminFeedback';
 import { AdminSocials } from './components/admin/AdminSocials';
 import { AdminSettings } from './components/admin/AdminSettings';
 import { AdminHomework } from './components/admin/AdminHomework';
-import { AdminUsers } from './components/admin/AdminUsers'; // New Component
+import { AdminUsers } from './components/admin/AdminUsers';
+import { AdminAchievements } from './components/admin/AdminAchievements';
 
-import { Theme, Student, Notice, Album, Magazine, ApplicationRecord, ExamResultsData, AttendanceRecords, SchoolTimetable, AdmissionApplication, Feedback as FeedbackType, FeeStructure, LeaveApplication, Post, SchoolSettings, FlashNotice, SocialLinksMap, Homework as HomeworkType, NotificationItem, AdminUser } from './types';
+import { Theme, Student, Notice, Album, Magazine, ApplicationRecord, ExamResultsData, AttendanceRecords, SchoolTimetable, AdmissionApplication, Feedback as FeedbackType, FeeStructure, LeaveApplication, Post, SchoolSettings, FlashNotice, SocialLinksMap, Homework as HomeworkType, NotificationItem, AdminUser, Achievement } from './types';
 import { 
   studentsList as initialStudents, 
   dailyNotice as initialNotice, 
@@ -48,8 +50,28 @@ import {
   attendanceRecordsData as initialAttendance,
   leaveApplicationsData as initialLeaveApplications,
   initialCampusPosts,
-  homeworkList as initialHomework
+  homeworkList as initialHomework,
+  initialAchievements
 } from './data';
+
+// --- PERSISTENCE HELPER ---
+function usePersistedState<T>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
+  const [state, setState] = useState<T>(() => {
+    try {
+      const saved = localStorage.getItem(key);
+      return saved ? JSON.parse(saved) : initialValue;
+    } catch (e) {
+      console.error("Error loading state for key:", key, e);
+      return initialValue;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem(key, JSON.stringify(state));
+  }, [key, state]);
+
+  return [state, setState];
+}
 
 // --- CREDENTIALS (DEPRECATED - Moved to State) ---
 const MOCK_OTP = '1234';
@@ -198,6 +220,10 @@ export const SchoolContext = React.createContext<{
   setHomework: React.Dispatch<React.SetStateAction<HomeworkType[]>>;
   addHomework: (hw: Omit<HomeworkType, 'id' | 'status' | 'postedDate' | 'color'>) => void;
   deleteHomework: (id: number) => void;
+  achievements: Achievement[];
+  setAchievements: React.Dispatch<React.SetStateAction<Achievement[]>>;
+  addAchievement: (achievement: Omit<Achievement, 'id'>) => void;
+  deleteAchievement: (id: number) => void;
   schoolName: string; // Keep for backward compatibility proxy
   setSchoolName: (name: string) => void;
   currentSession: string;
@@ -252,6 +278,10 @@ export const SchoolContext = React.createContext<{
   setHomework: () => {},
   addHomework: () => {},
   deleteHomework: () => {},
+  achievements: [],
+  setAchievements: () => {},
+  addAchievement: () => {},
+  deleteAchievement: () => {},
   schoolName: DEFAULT_SETTINGS.schoolName,
   setSchoolName: () => {},
   currentSession: DEFAULT_SETTINGS.currentSession,
@@ -260,6 +290,27 @@ export const SchoolContext = React.createContext<{
   unreadCount: 0,
   markAllAsRead: () => {},
 });
+
+// --- AUTH WRAPPER FOR STUDENTS ---
+const RequireStudentAuth = ({ children }: { children: React.ReactNode }) => {
+  const { isLoggedIn } = useContext(AuthContext);
+  const location = useLocation();
+
+  if (!isLoggedIn) {
+    // Generate a friendly message based on the path
+    const path = location.pathname.split('/')[1];
+    let pageName = 'this content';
+    if (path) pageName = path.charAt(0).toUpperCase() + path.slice(1);
+    
+    // Custom overrides
+    if (path === 'application') pageName = 'Leave Applications';
+    if (path === 'circulars') pageName = 'School Notices';
+
+    return <Navigate to="/profile" state={{ message: `Please login to view ${pageName}.`, from: location }} replace />;
+  }
+
+  return <>{children}</>;
+};
 
 const AppContent: React.FC = () => {
   const { isLoggedIn, isAdmin } = useContext(AuthContext);
@@ -285,8 +336,9 @@ const AppContent: React.FC = () => {
               <Route path="admissions" element={<AdminAdmissions />} />
               <Route path="feedback" element={<AdminFeedback />} />
               <Route path="socials" element={<AdminSocials />} />
+              <Route path="achievements" element={<AdminAchievements />} />
               <Route path="settings" element={<AdminSettings />} />
-              <Route path="users" element={<AdminUsers />} /> {/* New Route */}
+              <Route path="users" element={<AdminUsers />} /> 
               <Route path="*" element={<Navigate to="dashboard" replace />} />
             </Routes>
           </AdminLayout>
@@ -299,17 +351,21 @@ const AppContent: React.FC = () => {
         <Layout>
           <Routes>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/attendance" element={<Attendance />} />
-            <Route path="/homework" element={<Homework />} />
-            <Route path="/timetable" element={<Timetable />} />
             <Route path="/circulars" element={<Notices />} />
-            <Route path="/profile" element={isLoggedIn && !isAdmin ? <Profile /> : <Profile />} />
-            <Route path="/fees" element={<Fees />} />
-            <Route path="/results" element={<Results />} />
             <Route path="/gallery" element={<Gallery />} />
-            <Route path="/feedback" element={<Feedback />} />
-            <Route path="/application" element={<Application />} />
             <Route path="/admission" element={<Admission />} />
+            <Route path="/profile" element={isLoggedIn && !isAdmin ? <Profile /> : <Profile />} />
+            
+            {/* Protected Routes */}
+            <Route path="/attendance" element={<RequireStudentAuth><Attendance /></RequireStudentAuth>} />
+            <Route path="/homework" element={<RequireStudentAuth><Homework /></RequireStudentAuth>} />
+            <Route path="/timetable" element={<RequireStudentAuth><Timetable /></RequireStudentAuth>} />
+            <Route path="/fees" element={<RequireStudentAuth><Fees /></RequireStudentAuth>} />
+            <Route path="/results" element={<RequireStudentAuth><Results /></RequireStudentAuth>} />
+            <Route path="/feedback" element={<RequireStudentAuth><Feedback /></RequireStudentAuth>} />
+            <Route path="/application" element={<RequireStudentAuth><Application /></RequireStudentAuth>} />
+            <Route path="/achievements" element={<RequireStudentAuth><Achievements /></RequireStudentAuth>} />
+            
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Layout>
@@ -333,36 +389,48 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem('isLoggedIn') === 'true');
   const [isAdmin, setIsAdmin] = useState(() => localStorage.getItem('isAdmin') === 'true');
   
-  // Admin Data State
-  const [adminUsers, setAdminUsers] = useState<AdminUser[]>(() => {
-    const saved = localStorage.getItem('adminUsers');
-    return saved ? JSON.parse(saved) : INITIAL_ADMINS;
-  });
+  // Persisted Data States using usePersistedState helper
+  const [adminUsers, setAdminUsers] = usePersistedState<AdminUser[]>('adminUsers', INITIAL_ADMINS);
+  const [settings, setSettings] = usePersistedState<SchoolSettings>('schoolSettings', DEFAULT_SETTINGS);
+  const [allStudents, setAllStudents] = usePersistedState<Student[]>('allStudents', initialStudents);
   
+  // Other Persisted School Data
+  const [dailyNotice, setDailyNotice] = usePersistedState('dailyNotice', initialNotice);
+  const [examResults, setExamResults] = usePersistedState<ExamResultsData>('examResults', initialResults);
+  const [notices, setNotices] = usePersistedState<Notice[]>('noticesList', initialNotices);
+  const [gallery, setGallery] = usePersistedState<Album[]>('gallery', initialAlbums);
+  const [magazines, setMagazines] = usePersistedState<Magazine[]>('magazines', initialMagazines);
+  const [applications, setApplications] = usePersistedState<ApplicationRecord[]>('applications', initialApplications);
+  const [leaveApplications, setLeaveApplications] = usePersistedState<LeaveApplication[]>('leaveApplications', initialLeaveApplications);
+  const [attendance, setAttendance] = usePersistedState<AttendanceRecords>('attendanceRecords', initialAttendance);
+  const [timetable, setTimetable] = usePersistedState<SchoolTimetable>('timetable', initialTimetable);
+  const [admissions, setAdmissions] = usePersistedState<AdmissionApplication[]>('admissions', initialAdmissions);
+  const [feedback, setFeedback] = usePersistedState<FeedbackType[]>('feedback', initialFeedback);
+  const [posts, setPosts] = usePersistedState<Post[]>('posts', initialCampusPosts);
+  const [homework, setHomework] = usePersistedState<HomeworkType[]>('homework', initialHomework);
+  const [achievements, setAchievements] = usePersistedState<Achievement[]>('achievements', initialAchievements);
+  const [socialLinks, setSocialLinks] = usePersistedState<SocialLinksMap>('schoolSocialLinks', {});
+  const [feeStructure, setFeeStructure] = usePersistedState<FeeStructure>('feeStructure', {
+    "Nursery": 800, "LKG": 800, "UKG": 800,
+    "I": 1000, "II": 1000, "III": 1000, "IV": 1000, "V": 1000,
+    "VI": 1200, "VII": 1200, "VIII": 1200,
+    "IX": 1500, "X": 1500, "XI": 2000, "XII": 2000
+  });
+
+  // Non-persisted local state
   const [currentAdmin, setCurrentAdmin] = useState<AdminUser | null>(() => {
     const saved = localStorage.getItem('currentAdmin');
     return saved ? JSON.parse(saved) : null;
   });
 
-  // Login Wizard State
-  const [loginStep, setLoginStep] = useState(0); // 0: Mobile, 1: OTP, 2: Password
+  const [loginStep, setLoginStep] = useState(0); 
   const [loginRole, setLoginRole] = useState<'student' | 'admin' | null>(null);
   const [loginMobile, setLoginMobile] = useState('');
   const [pendingAdminUser, setPendingAdminUser] = useState<AdminUser | null>(null);
 
-  const [allStudents, setAllStudents] = useState<Student[]>(initialStudents);
   const [currentStudent, setCurrentStudent] = useState<Student>(initialStudents[0]);
   const [availableProfiles, setAvailableProfiles] = useState<Student[]>([]);
   
-  // School Data State
-  const [settings, setSettings] = useState<SchoolSettings>(() => {
-    const saved = localStorage.getItem('schoolSettings');
-    return saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
-  });
-
-  const [dailyNotice, setDailyNotice] = useState(initialNotice);
-  
-  // Initialize Flash Notice with defaults
   const [flashNotice, setFlashNotice] = useState<FlashNotice>({
     isVisible: false,
     title: 'Urgent Announcement',
@@ -372,43 +440,12 @@ function App() {
   });
 
   const [showBirthdayWidget, setShowBirthdayWidget] = useState(true);
-  const [examResults, setExamResults] = useState<ExamResultsData>(initialResults);
-  const [notices, setNotices] = useState(initialNotices);
-  const [gallery, setGallery] = useState<Album[]>(initialAlbums);
-  const [magazines, setMagazines] = useState<Magazine[]>(initialMagazines);
-  const [applications, setApplications] = useState(initialApplications);
-  const [leaveApplications, setLeaveApplications] = useState<LeaveApplication[]>(initialLeaveApplications);
-  const [attendance, setAttendance] = useState<AttendanceRecords>(initialAttendance);
-  const [timetable, setTimetable] = useState<SchoolTimetable>(initialTimetable);
-  const [admissions, setAdmissions] = useState<AdmissionApplication[]>(initialAdmissions);
-  const [feedback, setFeedback] = useState<FeedbackType[]>(initialFeedback);
-  const [posts, setPosts] = useState<Post[]>(initialCampusPosts);
-  const [homework, setHomework] = useState<HomeworkType[]>(initialHomework);
-  
-  // Notifications State
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  
-  // Initial Fee Structure
-  const [feeStructure, setFeeStructure] = useState<FeeStructure>({
-    "Nursery": 800, "LKG": 800, "UKG": 800,
-    "I": 1000, "II": 1000, "III": 1000, "IV": 1000, "V": 1000,
-    "VI": 1200, "VII": 1200, "VIII": 1200,
-    "IX": 1500, "X": 1500, "XI": 2000, "XII": 2000
-  });
-
-  // New Social Links Map (Class-Section)
-  const [socialLinks, setSocialLinks] = useState<SocialLinksMap>(() => {
-    const saved = localStorage.getItem('schoolSocialLinks');
-    return saved ? JSON.parse(saved) : {};
-  });
 
   // Auto-Generate Notifications Effect
   useEffect(() => {
-    // 1. Feedback (Unread)
     const newFeedback = feedback.filter(f => f.status === 'Unread');
-    // 2. Leave (Pending)
     const newLeave = leaveApplications.filter(l => l.status === 'Pending');
-    // 3. Admissions (Received)
     const newAdmissions = admissions.filter(a => a.status === 'Received');
 
     setNotifications(prev => {
@@ -416,7 +453,6 @@ function App() {
       const nextNotifications = [...prev];
       let hasNew = false;
 
-      // Helper to add if not exists
       const addIfNotExists = (idPrefix: string, type: 'feedback' | 'leave' | 'admission', msg: string, link: string, dateStr: string) => {
           const notifId = `${type}-${idPrefix}`;
           if (!existingIds.has(notifId)) {
@@ -436,44 +472,17 @@ function App() {
       newLeave.forEach(l => addIfNotExists(l.id.toString(), 'leave', `Leave request: ${l.studentName}`, '/admin/applications', l.appliedDate));
       newAdmissions.forEach(a => addIfNotExists(a.id.toString(), 'admission', `Admission inquiry: ${a.studentName}`, '/admin/admissions', a.date));
 
-      // Trigger Browser Notification if new items and permission granted
-      if (hasNew && isAdmin && Notification.permission === 'granted') {
-         new Notification('School Admin Alert', { 
-            body: `You have new pending items. Check the dashboard.`,
-            icon: settings.logoUrl
-         });
-      }
-
       return hasNew ? nextNotifications : prev;
     });
-  }, [feedback, leaveApplications, admissions, isAdmin, settings.logoUrl]);
+  }, [feedback, leaveApplications, admissions]);
 
-  // Request Notification Permission on Admin Login
-  useEffect(() => {
-    if (isAdmin && 'Notification' in window && Notification.permission !== 'granted') {
-      Notification.requestPermission();
-    }
-  }, [isAdmin]);
-
+  // Derived notification values
   const unreadCount = notifications.filter(n => !n.isRead).length;
-
   const markAllAsRead = () => {
     setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
   };
 
-  // Persist Data
-  useEffect(() => {
-    localStorage.setItem('schoolSocialLinks', JSON.stringify(socialLinks));
-  }, [socialLinks]);
-
-  useEffect(() => {
-    localStorage.setItem('schoolSettings', JSON.stringify(settings));
-  }, [settings]);
-
-  useEffect(() => {
-    localStorage.setItem('adminUsers', JSON.stringify(adminUsers));
-  }, [adminUsers]);
-
+  // Sync Current Admin
   useEffect(() => {
     if (currentAdmin) {
       localStorage.setItem('currentAdmin', JSON.stringify(currentAdmin));
@@ -498,65 +507,48 @@ function App() {
     }
   };
 
-  // --- REBUILT AUTH LOGIC ---
-
+  // --- AUTH LOGIC ---
   const verifyNumber = async (mobile: string): Promise<boolean> => {
-    // 1. Check for Admin in adminUsers array
-    const matchedAdmin = adminUsers.find(a => a.mobile === mobile || a.username === mobile); // Allow username login via mobile field hack if needed, but primary is mobile
-    
+    const matchedAdmin = adminUsers.find(a => a.mobile === mobile || a.username === mobile);
     if (matchedAdmin) {
       setLoginRole('admin');
       setLoginMobile(mobile);
       setPendingAdminUser(matchedAdmin);
-      setLoginStep(1); // Move to OTP
+      setLoginStep(1);
       alert(`CONFIDENTIAL: Your Admin OTP is ${MOCK_OTP}`);
       return true;
     }
 
-    // 2. Check for Student
     const matches = allStudents.filter(s => s.mobile === mobile);
     if (matches.length > 0) {
-      if (!settings.enableStudentLogin) {
-        throw new Error("Student portal is currently under maintenance.");
-      }
+      if (!settings.enableStudentLogin) throw new Error("Student portal is currently under maintenance.");
       setLoginRole('student');
       setLoginMobile(mobile);
-      setAvailableProfiles(matches); // Store for later
-      setLoginStep(1); // Move to OTP
+      setAvailableProfiles(matches);
+      setLoginStep(1);
       alert(`Your OTP is ${MOCK_OTP}`);
       return true;
     }
-
     return false;
   };
 
   const verifyOTP = async (otp: string): Promise<'success' | 'next_step' | 'invalid'> => {
-    if (otp !== MOCK_OTP) {
-      return 'invalid';
-    }
-
+    if (otp !== MOCK_OTP) return 'invalid';
     if (loginRole === 'admin') {
-      // Admin needs 2FA Password
       setLoginStep(2);
       return 'next_step';
     }
-
     if (loginRole === 'student') {
-      // Student is authenticated
       if (availableProfiles.length === 1 || !settings.siblingLoginEnabled) {
-        // Single profile
-        const student = availableProfiles[0];
-        setCurrentStudent(student);
+        setCurrentStudent(availableProfiles[0]);
         finalizeLogin(false);
         navigate('/');
       } else {
-        // Multiple profiles
-        finalizeLogin(false); // Auth is valid, but need selection
+        finalizeLogin(false);
         navigate('/select-profile');
       }
       return 'success';
     }
-
     return 'invalid';
   };
 
@@ -577,7 +569,6 @@ function App() {
     setIsAdmin(asAdmin);
     localStorage.setItem('isLoggedIn', 'true');
     if (asAdmin) localStorage.setItem('isAdmin', 'true');
-    // Reset wizard state
     setLoginStep(0);
     setLoginRole(null);
     setLoginMobile('');
@@ -616,7 +607,6 @@ function App() {
     if (student) setCurrentStudent(student);
   };
 
-  // Helper to update both database (allStudents) and session (currentStudent)
   const updateStudentData = (updatedStudent: Student) => {
     setAllStudents(prev => prev.map(s => s.admissionNo === updatedStudent.admissionNo ? updatedStudent : s));
     if (currentStudent.admissionNo === updatedStudent.admissionNo) {
@@ -624,25 +614,14 @@ function App() {
     }
   };
 
-  // --- END AUTH LOGIC ---
-
+  // --- ACTIONS ---
   const addApplication = (app: Omit<ApplicationRecord, 'id' | 'color' | 'status'>) => {
-    const newApp: ApplicationRecord = {
-      ...app,
-      id: Date.now(),
-      status: 'Pending',
-      color: 'bg-yellow-100 text-yellow-700'
-    };
+    const newApp: ApplicationRecord = { ...app, id: Date.now(), status: 'Pending', color: 'bg-yellow-100 text-yellow-700' };
     setApplications(prev => [...prev, newApp]);
   };
 
   const addLeaveApplication = (app: Omit<LeaveApplication, 'id' | 'status' | 'appliedDate'>) => {
-    const newLeave: LeaveApplication = {
-      ...app,
-      id: Date.now(),
-      status: 'Pending',
-      appliedDate: new Date().toISOString().split('T')[0]
-    };
+    const newLeave: LeaveApplication = { ...app, id: Date.now(), status: 'Pending', appliedDate: new Date().toISOString().split('T')[0] };
     setLeaveApplications(prev => [newLeave, ...prev]);
   };
 
@@ -651,34 +630,17 @@ function App() {
   };
 
   const addAdmission = (app: Omit<AdmissionApplication, 'id' | 'status' | 'date'>) => {
-    const newAdmission: AdmissionApplication = {
-      ...app,
-      id: Date.now(),
-      status: 'Received',
-      date: new Date().toISOString().split('T')[0] // Standardized format
-    };
+    const newAdmission: AdmissionApplication = { ...app, id: Date.now(), status: 'Received', date: new Date().toISOString().split('T')[0] };
     setAdmissions(prev => [newAdmission, ...prev]);
   };
   
   const addFeedback = (fb: Omit<FeedbackType, 'id' | 'date' | 'read' | 'status'>) => {
-    const newFeedback: FeedbackType = {
-      ...fb,
-      id: Date.now(),
-      date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
-      status: 'Unread'
-    };
+    const newFeedback: FeedbackType = { ...fb, id: Date.now(), date: new Date().toISOString().split('T')[0], status: 'Unread' };
     setFeedback(prev => [newFeedback, ...prev]);
   };
 
   const addPost = (content: string) => {
-    const newPost: Post = {
-      id: Date.now(),
-      author: 'Principal Office',
-      role: 'Admin',
-      content: content,
-      timestamp: 'Just now',
-      likes: 0
-    };
+    const newPost: Post = { id: Date.now(), author: 'Principal Office', role: 'Admin', content: content, timestamp: 'Just now', likes: 0 };
     setPosts(prev => [newPost, ...prev]);
   };
 
@@ -686,20 +648,22 @@ function App() {
     setPosts(prev => prev.filter(p => p.id !== id));
   };
 
-  // --- HOMEWORK ACTIONS ---
   const addHomework = (hw: Omit<HomeworkType, 'id' | 'status' | 'postedDate' | 'color'>) => {
-    const newHomework: HomeworkType = {
-      ...hw,
-      id: Date.now(),
-      status: 'pending',
-      postedDate: new Date().toISOString().split('T')[0],
-      color: 'bg-blue-500' // Default visual cue
-    };
+    const newHomework: HomeworkType = { ...hw, id: Date.now(), status: 'pending', postedDate: new Date().toISOString().split('T')[0], color: 'bg-blue-500' };
     setHomework(prev => [newHomework, ...prev]);
   };
 
   const deleteHomework = (id: number) => {
     setHomework(prev => prev.filter(h => h.id !== id));
+  };
+
+  const addAchievement = (achievement: Omit<Achievement, 'id'>) => {
+    const newAchievement: Achievement = { ...achievement, id: Date.now() };
+    setAchievements(prev => [newAchievement, ...prev]);
+  };
+
+  const deleteAchievement = (id: number) => {
+    setAchievements(prev => prev.filter(a => a.id !== id));
   };
 
   useEffect(() => {
@@ -712,55 +676,9 @@ function App() {
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      isLoggedIn, 
-      isAdmin, 
-      loginStep,
-      loginRole,
-      verifyNumber,
-      verifyOTP,
-      verifyPassword,
-      resetAuthFlow,
-      logout, 
-      currentStudent, 
-      allStudents, 
-      setAllStudents, 
-      availableProfiles, 
-      selectProfile,
-      switchStudent,
-      updateStudentData,
-      adminUsers,
-      setAdminUsers,
-      currentAdmin,
-      setCurrentAdmin,
-      updateAdminProfile
-    }}>
+    <AuthContext.Provider value={{ isLoggedIn, isAdmin, loginStep, loginRole, verifyNumber, verifyOTP, verifyPassword, resetAuthFlow, logout, currentStudent, allStudents, setAllStudents, availableProfiles, selectProfile, switchStudent, updateStudentData, adminUsers, setAdminUsers, currentAdmin, setCurrentAdmin, updateAdminProfile }}>
       <ThemeContext.Provider value={{ theme, toggleTheme }}>
-        <SchoolContext.Provider value={{
-          settings, updateSettings,
-          schoolName: settings.schoolName, // Proxy
-          setSchoolName: (name) => updateSettings({ schoolName: name }), // Proxy
-          currentSession: settings.currentSession, // Proxy
-          setCurrentSession: (session) => updateSettings({ currentSession: session }), // Proxy
-          dailyNotice, setDailyNotice,
-          flashNotice, setFlashNotice,
-          showBirthdayWidget, setShowBirthdayWidget,
-          examResults, setExamResults,
-          notices, setNotices,
-          gallery, setGallery,
-          magazines, setMagazines,
-          applications, setApplications, addApplication,
-          leaveApplications, setLeaveApplications, addLeaveApplication, updateLeaveStatus,
-          attendance, setAttendance,
-          timetable, setTimetable,
-          admissions, setAdmissions, addAdmission,
-          feedback, setFeedback, addFeedback,
-          feeStructure, setFeeStructure,
-          socialLinks, updateSocialLink,
-          posts, setPosts, addPost, deletePost,
-          homework, setHomework, addHomework, deleteHomework,
-          notifications, unreadCount, markAllAsRead
-        }}>
+        <SchoolContext.Provider value={{ settings, updateSettings, schoolName: settings.schoolName, setSchoolName: (name) => updateSettings({ schoolName: name }), currentSession: settings.currentSession, setCurrentSession: (session) => updateSettings({ currentSession: session }), dailyNotice, setDailyNotice, flashNotice, setFlashNotice, showBirthdayWidget, setShowBirthdayWidget, examResults, setExamResults, notices, setNotices, gallery, setGallery, magazines, setMagazines, applications, setApplications, addApplication, leaveApplications, setLeaveApplications, addLeaveApplication, updateLeaveStatus, attendance, setAttendance, timetable, setTimetable, admissions, setAdmissions, addAdmission, feedback, setFeedback, addFeedback, feeStructure, setFeeStructure, socialLinks, updateSocialLink, posts, setPosts, addPost, deletePost, homework, setHomework, addHomework, deleteHomework, achievements, setAchievements, addAchievement, deleteAchievement, notifications, unreadCount, markAllAsRead }}>
           <AppContent />
         </SchoolContext.Provider>
       </ThemeContext.Provider>
@@ -768,8 +686,5 @@ function App() {
   );
 }
 
-const AppWrapper: React.FC = () => (
-  <Router><App /></Router>
-);
-
+const AppWrapper: React.FC = () => ( <Router><App /></Router> );
 export { AppWrapper as default };

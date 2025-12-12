@@ -1,14 +1,13 @@
-
 import React, { useState, useEffect, useContext } from 'react';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, LogIn } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AuthContext, SchoolContext } from '../App';
+import { AuthContext, SchoolContext } from '../../App';
 import { Link } from 'react-router-dom';
 
 const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export const Attendance: React.FC = () => {
-  const { currentStudent } = useContext(AuthContext);
+  const { isLoggedIn, currentStudent } = useContext(AuthContext);
   const { attendance } = useContext(SchoolContext);
   
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -34,6 +33,23 @@ export const Attendance: React.FC = () => {
     }
     setCalendarData(daysArray);
   }, [currentDate]);
+
+  if (!isLoggedIn) {
+      return (
+         <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="w-24 h-24 bg-slate-100 dark:bg-white/5 rounded-full flex items-center justify-center mb-6 text-slate-400">
+               <CalendarIcon size={40} />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Attendance Locked</h2>
+            <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-xs mx-auto">
+               Please login to view your attendance record.
+            </p>
+            <Link to="/profile" className="mt-8 px-8 py-3 bg-slate-900 dark:bg-white text-white dark:text-black font-bold rounded-xl flex items-center gap-2 hover:scale-105 transition-transform">
+               <LogIn size={20} /> Login Now
+            </Link>
+         </div>
+      );
+  }
 
   const handlePrevMonth = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));

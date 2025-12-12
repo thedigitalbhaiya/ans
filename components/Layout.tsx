@@ -3,7 +3,7 @@ import React, { useContext, useState, useRef, useEffect, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ThemeContext, AuthContext, SchoolContext } from '../App';
 import { 
-  LayoutDashboard, 
+  LayoutGrid, 
   CalendarDays, 
   BookOpen, 
   Bell, 
@@ -13,14 +13,15 @@ import {
   Clock,
   CreditCard,
   Trophy,
-  LogOut,
   FileText,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
   Check,
   IdCard,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Settings,
+  Award
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Theme } from '../types';
@@ -39,16 +40,16 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const isHome = location.pathname === '/';
   const hasSiblings = availableProfiles.length > 1;
 
-  // Dynamic Navigation Items based on Settings
+  // Dynamic Navigation Items
   const navItems = useMemo(() => {
     const items = [
-      { path: '/', label: 'Home', icon: LayoutDashboard },
+      { path: '/', label: 'Home', icon: LayoutGrid },
       { path: '/attendance', label: 'Attendance', icon: CalendarDays },
-      { path: '/profile', label: 'Student ID', icon: IdCard },
+      { path: '/profile', label: 'ID Card', icon: IdCard },
     ];
 
     if (settings.enableOnlineFees) {
-      items.push({ path: '/fees', label: 'Fees', icon: CreditCard });
+      items.push({ path: '/fees', label: 'Payments', icon: CreditCard });
     }
 
     if (settings.showResults) {
@@ -56,15 +57,16 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     }
 
     items.push(
+      { path: '/achievements', label: 'Awards', icon: Award },
       { path: '/timetable', label: 'Schedule', icon: Clock },
-      { path: '/circulars', label: 'Circulars', icon: Bell },
-      { path: '/application', label: 'Application', icon: FileText }
+      { path: '/circulars', label: 'Notices', icon: Bell },
+      { path: '/application', label: 'Apply', icon: FileText }
     );
 
     return items;
   }, [settings]);
 
-  // Responsive sidebar logic
+  // Responsive sidebar
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 768 && window.innerWidth < 1280) {
@@ -78,7 +80,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -86,147 +87,117 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleLogoClick = () => {
-    if (isLoggedIn && !isCollapsed) {
-      if (hasSiblings) setShowProfileMenu(!showProfileMenu);
-    } else {
-      navigate('/profile');
-    }
-  };
-
-  const ProfileSwitcherMenu = () => (
-    <motion.div 
-      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-      transition={{ duration: 0.2 }}
-      className="absolute top-full left-0 mt-2 w-64 bg-white dark:bg-[#2C2C2E] rounded-2xl shadow-xl border border-slate-100 dark:border-white/10 overflow-hidden z-50"
-    >
-       <div className="p-3 bg-slate-50 dark:bg-white/5 border-b border-slate-100 dark:border-white/5">
-         <span className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-            <ArrowRightLeft size={14} /> Switch Sibling
-         </span>
-       </div>
-       <div className="p-2 space-y-1">
-         {availableProfiles.map((student) => (
-           <button
-             key={student.admissionNo}
-             onClick={() => {
-               selectProfile(student.admissionNo);
-               setShowProfileMenu(false);
-               navigate('/');
-             }}
-             className={`w-full flex items-center gap-3 p-2 rounded-xl transition-colors ${
-               currentStudent.admissionNo === student.admissionNo 
-                 ? 'bg-ios-blue/10 dark:bg-blue-500/20' 
-                 : 'hover:bg-slate-100 dark:hover:bg-white/5'
-             }`}
-           >
-              <div className="w-8 h-8 rounded-full overflow-hidden border border-slate-200 dark:border-white/10">
-                <img src={student.avatar} alt={student.name} className="w-full h-full object-cover" />
-              </div>
-              <div className="flex-1 text-left">
-                <p className={`text-sm font-bold truncate ${
-                   currentStudent.admissionNo === student.admissionNo 
-                     ? 'text-ios-blue dark:text-blue-400' 
-                     : 'text-slate-900 dark:text-white'
-                }`}>
-                  {student.name.split(' ')[0]}
-                </p>
-                <p className="text-[10px] text-slate-500 truncate">Class {student.class}-{student.section}</p>
-              </div>
-              {currentStudent.admissionNo === student.admissionNo && (
-                <Check size={16} className="text-ios-blue dark:text-blue-400" />
-              )}
-           </button>
-         ))}
-       </div>
-    </motion.div>
-  );
-
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-ios-bg dark:bg-black transition-colors duration-500 font-sans">
-      {/* Sidebar for Desktop */}
+    <div className="flex h-screen w-full overflow-hidden bg-ios-bg dark:bg-black text-slate-900 dark:text-white font-sans selection:bg-ios-blue selection:text-white">
+      
+      {/* Desktop Sidebar (Glassmorphism) */}
       <aside 
-        className={`hidden md:flex flex-col h-full bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-2xl border-r border-ios-divider/20 dark:border-white/10 pt-8 pb-6 transition-all duration-300 z-20 relative ${
-          isCollapsed ? 'w-20 px-2' : 'w-72 px-4'
-        }`}
+        className={`hidden md:flex flex-col h-full bg-[#F9F9F9]/80 dark:bg-[#1C1C1E]/80 backdrop-blur-2xl border-r border-ios-separator/20 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] z-20 relative ${
+          isCollapsed ? 'w-24 px-3' : 'w-[280px] px-5'
+        } pt-8 pb-6`}
       >
+        {/* Collapse Toggle */}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="absolute -right-3 top-9 p-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-slate-400 hover:text-ios-blue transition-colors shadow-sm z-30"
+          className="absolute -right-3 top-10 p-1.5 bg-white dark:bg-[#2C2C2E] border border-ios-separator/20 rounded-full text-slate-400 hover:text-ios-blue transition-colors shadow-sm z-30"
         >
           {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
 
+        {/* Brand */}
         <div 
-          className={`flex items-center gap-3 mb-8 cursor-pointer transition-all ${isCollapsed ? 'justify-center px-0' : 'px-2'}`} 
-          onClick={handleLogoClick}
+          className={`flex items-center gap-4 mb-10 cursor-pointer transition-all ${isCollapsed ? 'justify-center' : ''}`} 
+          onClick={() => navigate('/')}
         >
-            <Logo className="w-10 h-10 flex-shrink-0" />
+            <div className="w-10 h-10 rounded-xl bg-ios-blue flex items-center justify-center text-white shadow-lg shadow-ios-blue/20">
+               <Logo className="w-6 h-6 invert brightness-0" />
+            </div>
             <div className={`overflow-hidden transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
-              <h1 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight leading-none whitespace-nowrap">
+              <h1 className="text-lg font-bold tracking-tight leading-none">
                 {settings.schoolName.split(' ')[0]}
               </h1>
-              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">
+              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
                 Student Portal
               </span>
             </div>
         </div>
         
-        {/* User Profile */}
-        <div className="relative mb-6" ref={menuRef}>
+        {/* Profile Card (Sidebar) */}
+        <div className="relative mb-8" ref={menuRef}>
           {isLoggedIn ? (
               <button 
                  onClick={() => {
-                    if (isCollapsed) {
-                        navigate('/profile');
-                    } else if (hasSiblings) {
-                        setShowProfileMenu(!showProfileMenu);
-                    }
+                    if (isCollapsed) navigate('/profile');
+                    else if (hasSiblings) setShowProfileMenu(!showProfileMenu);
                  }}
-                 className={`flex items-center gap-3 w-full group outline-none transition-all ${isCollapsed ? 'justify-center px-0' : 'px-4'}`}
-                 disabled={!hasSiblings && !isCollapsed} // Disable click if only 1 profile and expanded
+                 className={`flex items-center gap-3 w-full group outline-none transition-all p-2 rounded-2xl hover:bg-black/5 dark:hover:bg-white/5 ${isCollapsed ? 'justify-center' : ''}`}
+                 disabled={!hasSiblings && !isCollapsed}
               >
-                <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white dark:border-white/10 shadow-md ring-2 ring-slate-100 dark:ring-white/5 transition-transform group-hover:scale-105 flex-shrink-0">
+                <div className="w-10 h-10 rounded-full overflow-hidden border border-black/5 dark:border-white/10 shadow-sm flex-shrink-0">
                   <img src={currentStudent.avatar} alt="Profile" className="w-full h-full object-cover" />
                 </div>
                 <div className={`flex-1 min-w-0 text-left transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
-                  <span className="text-sm font-bold tracking-tight text-slate-900 dark:text-white block truncate group-hover:text-ios-blue transition-colors">
+                  <span className="text-sm font-bold block truncate text-slate-900 dark:text-white">
                     {currentStudent.name.split(' ')[0]}
                   </span>
-                  <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                    ID: {currentStudent.admissionNo.split('/')[2] || '---'}
+                  <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block">
+                    {currentStudent.class}-{currentStudent.section}
                   </span>
                 </div>
-                {!isCollapsed && hasSiblings && <ChevronDown size={16} className={`text-slate-400 transition-transform ${showProfileMenu ? 'rotate-180' : ''}`} />}
+                {!isCollapsed && hasSiblings && <ChevronDown size={14} className="text-slate-400" />}
               </button>
           ) : (
-             <Link to="/profile" className={`flex items-center gap-3 w-full group ${isCollapsed ? 'justify-center px-0' : 'px-4'}`}>
-               <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center border-2 border-dashed border-slate-300 dark:border-white/20 flex-shrink-0">
-                 <User size={20} className="text-slate-400" />
+             <Link to="/profile" className={`flex items-center gap-3 w-full p-2 rounded-2xl hover:bg-black/5 dark:hover:bg-white/5 ${isCollapsed ? 'justify-center' : ''}`}>
+               <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-white/10 flex items-center justify-center text-slate-500">
+                 <User size={20} />
                </div>
                <div className={`text-left transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
-                 <span className="text-sm font-bold text-slate-900 dark:text-white whitespace-nowrap">Guest</span>
-                 <span className="text-[10px] text-ios-blue dark:text-blue-400 font-bold block">Login</span>
+                 <span className="text-sm font-bold block">Guest</span>
+                 <span className="text-[11px] text-ios-blue font-bold block">Tap to Login</span>
                </div>
              </Link>
           )}
           
+          {/* Sibling Dropdown */}
           <AnimatePresence>
-            {showProfileMenu && !isCollapsed && hasSiblings && <ProfileSwitcherMenu />}
+            {showProfileMenu && !isCollapsed && hasSiblings && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  className="absolute top-full left-0 mt-2 w-full bg-white/90 dark:bg-[#2C2C2E]/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-black/5 dark:border-white/5 overflow-hidden z-50 p-1"
+                >
+                   {availableProfiles.map((student) => (
+                     <button
+                       key={student.admissionNo}
+                       onClick={() => {
+                         selectProfile(student.admissionNo);
+                         setShowProfileMenu(false);
+                         navigate('/');
+                       }}
+                       className={`w-full flex items-center gap-3 p-2 rounded-xl transition-all ${
+                         currentStudent.admissionNo === student.admissionNo 
+                           ? 'bg-ios-blue text-white' 
+                           : 'hover:bg-black/5 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200'
+                       }`}
+                     >
+                        <img src={student.avatar} className="w-6 h-6 rounded-full bg-white/20" alt="" />
+                        <span className="text-xs font-bold flex-1 text-left truncate">{student.name.split(' ')[0]}</span>
+                        {currentStudent.admissionNo === student.admissionNo && <Check size={12} />}
+                     </button>
+                   ))}
+                </motion.div>
+            )}
           </AnimatePresence>
         </div>
 
-        <nav className="flex-1 space-y-2 overflow-y-auto no-scrollbar py-2">
+        {/* Nav Links */}
+        <nav className="flex-1 space-y-1 overflow-y-auto no-scrollbar">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
-            const Icon = item.icon;
             return (
               <Link
                 key={item.path}
@@ -236,19 +207,19 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               >
                 {isActive && (
                   <motion.div
-                    layoutId="active-nav"
-                    className="absolute inset-0 bg-ios-blue dark:bg-blue-600 shadow-lg shadow-ios-blue/20 dark:shadow-blue-600/20 rounded-xl"
+                    layoutId="sidebar-active"
+                    className="absolute inset-0 bg-ios-blue rounded-xl"
                     initial={false}
                     transition={{ type: "spring", stiffness: 300, damping: 30 }}
                   />
                 )}
-                <div className={`relative flex items-center gap-3 py-3 rounded-xl transition-colors duration-200 ${
+                <div className={`relative flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 ${
                   isActive 
-                    ? 'text-white' 
-                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
-                } ${isCollapsed ? 'justify-center px-0' : 'px-4'}`}>
-                  <Icon size={22} className={`${isActive ? 'text-white' : 'text-slate-400 dark:text-slate-500 group-hover:text-current transition-colors'} flex-shrink-0`} strokeWidth={2} />
-                  <span className={`font-medium whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
+                    ? 'text-white shadow-md shadow-ios-blue/20' 
+                    : 'text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
+                } ${isCollapsed ? 'justify-center' : ''}`}>
+                  <item.icon size={20} strokeWidth={2.5} className="flex-shrink-0" />
+                  <span className={`text-[13px] font-semibold tracking-wide whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
                     {item.label}
                   </span>
                 </div>
@@ -257,86 +228,118 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           })}
         </nav>
 
-        <div className="space-y-2 pt-4 border-t border-ios-divider/20 dark:border-white/10">
+        {/* Footer Actions */}
+        <div className="space-y-2 pt-6 border-t border-ios-separator/20">
           <button
             onClick={toggleTheme}
-            className={`w-full flex items-center gap-3 py-3 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors ${isCollapsed ? 'justify-center px-0' : 'px-4'}`}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 transition-colors ${isCollapsed ? 'justify-center' : ''}`}
           >
-            {theme === Theme.LIGHT ? <Moon size={22} /> : <Sun size={22} />}
-            <span className={`font-medium whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
+            {theme === Theme.LIGHT ? <Moon size={20} /> : <Sun size={20} />}
+            <span className={`text-[13px] font-semibold whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
               {theme === Theme.LIGHT ? 'Dark Mode' : 'Light Mode'}
             </span>
           </button>
         </div>
       </aside>
 
-      {/* Main Content Area */}
-      <main className="flex-1 h-full overflow-y-auto overflow-x-hidden relative no-scrollbar bg-ios-bg dark:bg-black transition-colors duration-500">
-        {/* Header for Mobile */}
-        <header className="md:hidden sticky top-0 z-30 flex items-center justify-between px-6 py-4 bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-xl border-b border-ios-divider/10 dark:border-white/10">
+      {/* Main Area */}
+      <main className="flex-1 h-full overflow-y-auto overflow-x-hidden relative no-scrollbar bg-ios-bg dark:bg-black scroll-smooth">
+        
+        {/* Mobile Header (Sticky & Glass) */}
+        <header className="md:hidden sticky top-0 z-40 px-6 py-4 bg-[#F2F2F7]/80 dark:bg-black/80 backdrop-blur-xl border-b border-ios-separator/10 flex items-center justify-between transition-all duration-300">
            {isHome ? (
              <div className="relative" ref={menuRef}>
                {isLoggedIn ? (
                    <button 
                       onClick={() => { if(hasSiblings) setShowProfileMenu(!showProfileMenu); }}
-                      className="flex items-center gap-3 active:opacity-80 transition-opacity"
+                      className="flex items-center gap-3 active:opacity-70 transition-opacity"
                    >
-                     <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden border border-slate-100 dark:border-white/10 shadow-sm relative">
+                     <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden border border-black/5 dark:border-white/10 shadow-sm">
                        <img src={currentStudent.avatar} alt="Profile" className="w-full h-full object-cover" />
                      </div>
                      <div className="text-left">
                         <div className="flex items-center gap-1">
-                          <span className="text-sm font-bold text-slate-900 dark:text-white block leading-none">
+                          <span className="text-lg font-bold text-slate-900 dark:text-white leading-none">
                             {currentStudent.name.split(' ')[0]}
                           </span>
-                          {hasSiblings && <ChevronDown size={12} className="text-slate-400" />}
+                          {hasSiblings && <ChevronDown size={14} className="text-slate-400" />}
                         </div>
-                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block leading-none mt-1 uppercase tracking-wider">
-                          Class {currentStudent.class}
+                        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block leading-none mt-1">
+                           Class {currentStudent.class}-{currentStudent.section}
                         </span>
                      </div>
                    </button>
                ) : (
                  <Link to="/profile" className="flex items-center gap-3">
-                    <Logo className="w-10 h-10" />
+                    <Logo className="w-9 h-9" />
                     <div>
-                      <span className="text-sm font-bold text-slate-900 dark:text-white block">Guest</span>
-                      <span className="text-[10px] text-ios-blue dark:text-blue-400 font-bold block">Login</span>
+                      <span className="text-base font-bold text-slate-900 dark:text-white block leading-none">Guest</span>
+                      <span className="text-[10px] text-ios-blue font-bold block leading-none mt-1">Tap to Login</span>
                     </div>
                  </Link>
                )}
+               
+               {/* Mobile Sibling Menu */}
                <AnimatePresence>
-                 {showProfileMenu && hasSiblings && <ProfileSwitcherMenu />}
+                 {showProfileMenu && hasSiblings && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute top-full left-0 mt-3 w-56 bg-white/90 dark:bg-[#1C1C1E]/90 backdrop-blur-2xl rounded-2xl shadow-2xl border border-black/5 dark:border-white/10 overflow-hidden z-50 p-1.5"
+                    >
+                       {availableProfiles.map((student) => (
+                         <button
+                           key={student.admissionNo}
+                           onClick={() => {
+                             selectProfile(student.admissionNo);
+                             setShowProfileMenu(false);
+                           }}
+                           className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-all mb-1 last:mb-0 ${
+                             currentStudent.admissionNo === student.admissionNo 
+                               ? 'bg-ios-blue text-white shadow-md' 
+                               : 'hover:bg-black/5 dark:hover:bg-white/10 text-slate-900 dark:text-white'
+                           }`}
+                         >
+                            <img src={student.avatar} className="w-6 h-6 rounded-full bg-white/20" alt="" />
+                            <div className="flex-1 text-left">
+                               <p className="text-xs font-bold leading-none">{student.name.split(' ')[0]}</p>
+                               <p className="text-[9px] opacity-80 mt-0.5 leading-none">Class {student.class}</p>
+                            </div>
+                            {currentStudent.admissionNo === student.admissionNo && <Check size={14} />}
+                         </button>
+                       ))}
+                    </motion.div>
+                 )}
                </AnimatePresence>
              </div>
            ) : (
              <button
                onClick={() => navigate(-1)}
-               className="flex items-center gap-2 active:opacity-60 transition-opacity group"
+               className="flex items-center gap-1 active:opacity-60 transition-opacity text-ios-blue font-medium"
              >
-               <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-900 dark:text-white group-hover:bg-slate-200 dark:group-hover:bg-white/20 transition-colors">
-                 <ChevronLeft size={24} />
-               </div>
-               <span className="text-lg font-bold text-slate-900 dark:text-white">Back</span>
+               <ChevronLeft size={22} />
+               <span className="text-base">Back</span>
              </button>
            )}
 
            <button
              onClick={toggleTheme}
-             className="p-2.5 rounded-full bg-slate-100 dark:bg-white/10 active:scale-95 transition-transform"
+             className="w-10 h-10 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center active:scale-95 transition-transform text-slate-600 dark:text-white"
            >
-             {theme === Theme.LIGHT ? <Moon size={18} className="text-slate-700" /> : <Sun size={18} className="text-yellow-400" />}
+             {theme === Theme.LIGHT ? <Moon size={20} /> : <Sun size={20} />}
            </button>
         </header>
 
-        <div className="max-w-6xl mx-auto p-6 pb-32 md:pb-12 md:p-10">
+        {/* Content Wrapper - Updated padding to px-6 for mobile */}
+        <div className="w-full max-w-5xl mx-auto px-6 py-6 pb-32 md:pb-10 md:p-10">
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname + (isLoggedIn ? currentStudent.admissionNo : 'guest')}
-              initial={{ opacity: 0, y: 15, scale: 0.98 }}
+              initial={{ opacity: 0, y: 10, scale: 0.99 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.98 }}
-              transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
+              exit={{ opacity: 0, y: -5, scale: 0.99 }}
+              transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
             >
               {children}
             </motion.div>
@@ -344,9 +347,9 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         </div>
       </main>
 
-      {/* Bottom Nav for Mobile */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/85 dark:bg-[#1C1C1E]/90 backdrop-blur-2xl border-t border-ios-divider/20 dark:border-white/10 pb-safe pt-2 px-6 shadow-2xl">
-        <div className="flex justify-between items-center h-16">
+      {/* Mobile Floating Dock (Bottom Nav) */}
+      <nav className="md:hidden fixed bottom-6 left-6 right-6 z-50">
+        <div className="bg-white/90 dark:bg-[#1C1C1E]/90 backdrop-blur-2xl rounded-[2rem] shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] border border-white/20 dark:border-white/5 p-1.5 flex justify-between items-center">
           {navItems.slice(0, 5).map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
@@ -354,23 +357,23 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               <Link
                 key={item.path}
                 to={item.path}
-                className="relative flex flex-col items-center justify-center w-12 h-12"
+                className={`relative flex flex-col items-center justify-center w-14 h-14 rounded-[1.5rem] transition-all duration-300 ${isActive ? 'text-white' : 'text-slate-400 dark:text-slate-500'}`}
               >
                 {isActive && (
                   <motion.div
-                    layoutId="mobile-nav-indicator"
-                    className="absolute -top-2 w-1 h-1 rounded-full bg-ios-blue dark:bg-blue-500 shadow-[0_0_8px_rgba(27,20,100,0.6)] dark:shadow-[0_0_8px_rgba(59,130,246,0.6)]"
+                    layoutId="mobile-dock-active"
+                    className="absolute inset-0 bg-ios-blue shadow-lg shadow-ios-blue/30 rounded-[1.5rem]"
+                    initial={false}
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
                   />
                 )}
-                <Icon
-                  size={26}
-                  className={`transition-all duration-300 ${
-                    isActive 
-                      ? 'text-ios-blue dark:text-blue-500 scale-110' 
-                      : 'text-slate-400 dark:text-slate-600'
-                  }`}
-                  strokeWidth={isActive ? 2.5 : 2}
-                />
+                <div className="relative z-10 flex flex-col items-center gap-0.5">
+                   <Icon
+                     size={22}
+                     strokeWidth={isActive ? 2.5 : 2}
+                     className={`transition-transform duration-300 ${isActive ? 'scale-100' : 'scale-90'}`}
+                   />
+                </div>
               </Link>
             );
           })}

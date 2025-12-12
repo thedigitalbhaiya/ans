@@ -6,7 +6,7 @@ import { AuthContext, SchoolContext } from '../App';
 import { Link } from 'react-router-dom';
 
 export const Application: React.FC = () => {
-  const { isLoggedIn, currentStudent } = useContext(AuthContext);
+  const { currentStudent } = useContext(AuthContext);
   const { leaveApplications, addLeaveApplication } = useContext(SchoolContext);
   const [activeTab, setActiveTab] = useState<'new' | 'history'>('new');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -17,23 +17,6 @@ export const Application: React.FC = () => {
   const [reason, setReason] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-
-  if (!isLoggedIn) {
-      return (
-         <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-24 h-24 bg-slate-100 dark:bg-white/5 rounded-full flex items-center justify-center mb-6 text-slate-400">
-               <FileText size={40} />
-            </div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Applications Locked</h2>
-            <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-xs mx-auto">
-               Please login to submit leave requests or view your application history.
-            </p>
-            <Link to="/profile" className="mt-8 px-8 py-3 bg-slate-900 dark:bg-white text-white dark:text-black font-bold rounded-xl flex items-center gap-2 hover:scale-105 transition-transform">
-               <LogIn size={20} /> Login Now
-            </Link>
-         </div>
-      );
-  }
 
   const myApplications = leaveApplications
     .filter(app => app.studentId === currentStudent.admissionNo)

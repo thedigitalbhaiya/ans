@@ -6,11 +6,11 @@ import {
   Settings, Save, Layout, Building2, UploadCloud, 
   ToggleLeft, ShieldAlert, Calendar, 
   Trash2, AlertTriangle, Download, RefreshCw, AlertOctagon, X, Image as ImageIcon,
-  Lock
+  Lock, FileJson, Database
 } from 'lucide-react';
 
 // --- TYPES ---
-type ModalType = 'promote' | 'attendance' | 'factory' | null;
+type ModalType = 'promote' | 'attendance' | 'factory' | 'restore' | null;
 
 interface ModalConfig {
   type: ModalType;
@@ -21,7 +21,22 @@ interface ModalConfig {
 }
 
 export const AdminSettings: React.FC = () => {
-  const { settings, updateSettings, setAttendance, attendance, examResults, feeStructure, notices, gallery } = useContext(SchoolContext);
+  const { 
+    settings, updateSettings, 
+    setAttendance, attendance, 
+    examResults, setExamResults,
+    feeStructure, setFeeStructure,
+    notices, setNotices,
+    gallery, setGallery,
+    magazines, setMagazines,
+    applications, setApplications,
+    leaveApplications, setLeaveApplications,
+    admissions, setAdmissions,
+    feedback, setFeedback,
+    posts, setPosts,
+    homework, setHomework
+  } = useContext(SchoolContext);
+  
   const { setAllStudents, allStudents, currentAdmin } = useContext(AuthContext);
 
   // Local state for forms
@@ -30,6 +45,7 @@ export const AdminSettings: React.FC = () => {
   const [modalConfig, setModalConfig] = useState<ModalConfig | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const restoreInputRef = useRef<HTMLInputElement>(null);
 
   // PERMISSION CHECK
   if (currentAdmin?.role !== 'Super Admin') {
@@ -99,7 +115,14 @@ export const AdminSettings: React.FC = () => {
       results: examResults,
       fees: feeStructure,
       notices,
-      gallery
+      gallery,
+      magazines,
+      applications,
+      leaveApplications,
+      admissions,
+      feedback,
+      posts,
+      homework
     };
     
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
@@ -111,22 +134,76 @@ export const AdminSettings: React.FC = () => {
     downloadAnchorNode.remove();
   };
 
+  const handleRestore = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const json = JSON.parse(event.target?.result as string);
+        if (!json.students || !json.settings) throw new Error("Invalid Backup File");
+
+        if (window.confirm(`Restore data from ${new Date(json.timestamp).toLocaleDateString()}? This will overwrite current data.`)) {
+           // Restore All States
+           if(json.settings) updateSettings(json.settings);
+           if(json.students) setAllStudents(json.students);
+           if(json.attendance) setAttendance(json.attendance);
+           if(json.results) setExamResults(json.results);
+           if(json.fees) setFeeStructure(json.fees);
+           if(json.notices) setNotices(json.notices);
+           if(json.gallery) setGallery(json.gallery);
+           if(json.magazines) setMagazines(json.magazines);
+           if(json.applications) setApplications(json.applications);
+           if(json.leaveApplications) setLeaveApplications(json.leaveApplications);
+           if(json.admissions) setAdmissions(json.admissions);
+           if(json.feedback) setFeedback(json.feedback);
+           if(json.posts) setPosts(json.posts);
+           if(json.homework) setHomework(json.homework);
+           
+           alert("System restored successfully!");
+           setFormData(json.settings);
+        }
+      } catch (err) {
+        alert("Failed to restore backup. Invalid file format.");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = ''; // Reset input
+  };
+
   const executePromoteStudents = () => {
+    // 1. Determine next session
+    const current = settings.currentSession; // e.g., "2025-26"
+    let nextSession = "New Session";
+    try {
+        const parts = current.split('-');
+        if (parts.length === 2) {
+            const y1 = parseInt(parts[0]) + 1;
+            const y2 = parseInt(parts[1]) + 1;
+            nextSession = `${y1}-${y2}`;
+        }
+    } catch(e) {}
+
+    // 2. Class Map
     const classMap: Record<string, string> = {
       "Nursery": "LKG", "LKG": "UKG", "UKG": "I",
       "I": "II", "II": "III", "III": "IV", "IV": "V", "V": "VI",
       "VI": "VII", "VII": "VIII", "VIII": "IX", "IX": "X",
-      "X": "Alumni", "Alumni": "Alumni"
+      "X": "XI", "XI": "XII", "XII": "Alumni", "Alumni": "Alumni"
     };
 
     const promotedStudents = allStudents.map(student => ({
       ...student,
       class: classMap[student.class] || student.class,
-      session: settings.currentSession // Update to new session tag
+      session: nextSession
     }));
 
     setAllStudents(promotedStudents);
-    alert(`Successfully promoted ${promotedStudents.length} students to the next class.`);
+    updateSettings({ currentSession: nextSession });
+    setFormData(prev => ({ ...prev, currentSession: nextSession }));
+    
+    alert(`Success! Session advanced to ${nextSession}. Students promoted.`);
     setModalConfig(null);
   };
 
@@ -144,9 +221,9 @@ export const AdminSettings: React.FC = () => {
   // --- MODAL TRIGGERS ---
   const openPromoteModal = () => setModalConfig({
     type: 'promote',
-    title: 'Promote All Students',
-    message: 'This will move every student to the next class (e.g., IX → X). Class X students will become "Alumni".',
-    confirmPhrase: 'PROMOTE 2025',
+    title: 'End of Session',
+    message: `This will promote all students to the next class and advance the academic year (e.g. ${settings.currentSession} -> Next). Class XII students will become Alumni.`,
+    confirmPhrase: 'PROMOTE',
     action: executePromoteStudents
   });
 
@@ -154,15 +231,15 @@ export const AdminSettings: React.FC = () => {
     type: 'attendance',
     title: 'Clear Attendance Data',
     message: 'You are about to delete ALL attendance history. This allows you to start a new academic year fresh.',
-    confirmPhrase: 'CLEAR DATA',
+    confirmPhrase: 'CLEAR',
     action: executeResetAttendance
   });
 
   const openFactoryModal = () => setModalConfig({
     type: 'factory',
-    title: 'Factory Reset App',
+    title: 'Factory Reset',
     message: 'This will delete ALL students, results, fees, and settings. The app will return to its initial state. This cannot be undone.',
-    confirmPhrase: 'DELETE EVERYTHING',
+    confirmPhrase: 'DELETE',
     action: executeFactoryReset
   });
 
@@ -303,6 +380,7 @@ export const AdminSettings: React.FC = () => {
                         <ToggleSwitch label="Online Fees" desc="Enable 'Pay Now' button" isOn={settings.enableOnlineFees} onToggle={() => handleToggle('enableOnlineFees')} />
                         <ToggleSwitch label="Admissions Open" desc="Show admission inquiry form" isOn={settings.admissionsOpen} onToggle={() => handleToggle('admissionsOpen')} />
                         <ToggleSwitch label="Sibling Login" desc="Allow multiple profiles per number" isOn={settings.siblingLoginEnabled} onToggle={() => handleToggle('siblingLoginEnabled')} />
+                        <ToggleSwitch label="Homework" desc="Enable homework & assignment module" isOn={settings.enableHomework} onToggle={() => handleToggle('enableHomework')} />
                     </div>
                 </div>
             </motion.div>
@@ -327,54 +405,61 @@ export const AdminSettings: React.FC = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
                         
-                        {/* 1. Backup */}
-                        <div className="bg-white dark:bg-black/40 p-5 rounded-2xl border border-red-100 dark:border-red-500/10 shadow-sm flex flex-col justify-between h-40">
+                        {/* 1. Backup & Restore */}
+                        <div className="bg-white dark:bg-black/40 p-6 rounded-3xl border border-red-100 dark:border-red-500/10 shadow-sm flex flex-col justify-between h-48">
                             <div>
-                                <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-2">
                                    <Download size={18} className="text-blue-500" /> Export Data
                                 </h3>
-                                <p className="text-xs text-slate-500 mt-2">Download a full JSON backup of students, marks, and fees.</p>
+                                <p className="text-xs text-slate-500 leading-relaxed">Download a full JSON backup of students, marks, and fees.</p>
                             </div>
-                            <button onClick={triggerBackup} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg font-bold text-sm hover:bg-blue-100 transition-colors w-full">
-                                Download Backup
-                            </button>
+                            <div className="space-y-2">
+                                <button onClick={triggerBackup} className="bg-blue-50 text-blue-600 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-blue-100 transition-colors w-full border border-blue-100">
+                                    Download Backup
+                                </button>
+                                <div className="flex items-center gap-2 justify-center cursor-pointer opacity-70 hover:opacity-100 transition-opacity" onClick={() => restoreInputRef.current?.click()}>
+                                    <UploadCloud size={14} className="text-slate-500" />
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Restore from File</span>
+                                    <input type="file" ref={restoreInputRef} className="hidden" accept=".json" onChange={handleRestore} />
+                                </div>
+                            </div>
                         </div>
 
                         {/* 2. Promote */}
-                        <div className="bg-white dark:bg-black/40 p-5 rounded-2xl border border-red-100 dark:border-red-500/10 shadow-sm flex flex-col justify-between h-40">
+                        <div className="bg-white dark:bg-black/40 p-6 rounded-3xl border border-red-100 dark:border-red-500/10 shadow-sm flex flex-col justify-between h-48">
                             <div>
-                                <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-2">
                                    <RefreshCw size={18} className="text-orange-500" /> End of Session
                                 </h3>
-                                <p className="text-xs text-slate-500 mt-2">Promote all students to the next class automatically.</p>
+                                <p className="text-xs text-slate-500 leading-relaxed">Promote all students to the next class automatically.</p>
                             </div>
-                            <button onClick={openPromoteModal} className="bg-orange-50 text-orange-600 px-4 py-2 rounded-lg font-bold text-sm hover:bg-orange-100 transition-colors w-full">
+                            <button onClick={openPromoteModal} className="bg-orange-50 text-orange-600 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-orange-100 transition-colors w-full border border-orange-100">
                                 Promote Students
                             </button>
                         </div>
 
                         {/* 3. Reset Attendance */}
-                        <div className="bg-white dark:bg-black/40 p-5 rounded-2xl border border-red-100 dark:border-red-500/10 shadow-sm flex flex-col justify-between h-40">
+                        <div className="bg-white dark:bg-black/40 p-6 rounded-3xl border border-red-100 dark:border-red-500/10 shadow-sm flex flex-col justify-between h-48">
                             <div>
-                                <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-2">
                                    <Calendar size={18} className="text-red-500" /> Clear Attendance
                                 </h3>
-                                <p className="text-xs text-slate-500 mt-2">Wipe all daily attendance logs. Keeps student profiles.</p>
+                                <p className="text-xs text-slate-500 leading-relaxed">Wipe all daily attendance logs. Keeps student profiles.</p>
                             </div>
-                            <button onClick={openAttendanceModal} className="bg-red-50 text-red-600 px-4 py-2 rounded-lg font-bold text-sm hover:bg-red-100 transition-colors w-full">
+                            <button onClick={openAttendanceModal} className="bg-red-50 text-red-600 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-red-100 transition-colors w-full border border-red-100">
                                 Reset History
                             </button>
                         </div>
 
                         {/* 4. Factory Reset */}
-                        <div className="bg-white dark:bg-black/40 p-5 rounded-2xl border border-red-100 dark:border-red-500/10 shadow-sm flex flex-col justify-between h-40">
+                        <div className="bg-white dark:bg-black/40 p-6 rounded-3xl border border-red-100 dark:border-red-500/10 shadow-sm flex flex-col justify-between h-48">
                             <div>
-                                <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-2">
                                    <Trash2 size={18} className="text-red-600" /> Factory Reset
                                 </h3>
-                                <p className="text-xs text-slate-500 mt-2">Delete EVERYTHING and restart app from scratch.</p>
+                                <p className="text-xs text-slate-500 leading-relaxed">Delete EVERYTHING and restart app from scratch.</p>
                             </div>
-                            <button onClick={openFactoryModal} className="bg-red-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-red-700 transition-colors w-full shadow-lg shadow-red-600/20">
+                            <button onClick={openFactoryModal} className="bg-red-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-red-700 transition-colors w-full shadow-lg shadow-red-600/20">
                                 Hard Reset App
                             </button>
                         </div>
@@ -434,7 +519,7 @@ const ConfirmationModal = ({ config, onClose }: { config: ModalConfig, onClose: 
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   placeholder={config.confirmPhrase}
-                  className="w-full p-3 border-2 border-slate-200 dark:border-white/10 rounded-xl outline-none focus:border-red-500 text-center font-bold text-slate-900 dark:text-white bg-transparent"
+                  className="w-full p-3 border-2 border-slate-200 dark:border-white/10 rounded-xl outline-none focus:border-red-500 text-center font-bold text-slate-900 dark:text-white bg-transparent transition-colors"
                   autoFocus
                 />
              </div>

@@ -1,6 +1,6 @@
 
 import { CheckCircle2, Circle, Trophy, Calendar, Bell, AlertTriangle, BookOpen, Clock, FileText, User, Users, BookUser, MapPin, Phone, Droplets, Cake } from 'lucide-react';
-import { Homework, WeeklySchedule, Notice, FeeRecord, ExamResult, Album, Magazine, ApplicationRecord, Student, AdmissionApplication, Feedback, ExamResultsData, SchoolTimetable, AttendanceRecords, LeaveApplication, Post } from './types';
+import { Homework, WeeklySchedule, Notice, FeeRecord, ExamResult, Album, Magazine, ApplicationRecord, Student, AdmissionApplication, Feedback, ExamResultsData, SchoolTimetable, AttendanceRecords, LeaveApplication, Post, Achievement } from './types';
 
 // --- HELPER: SEED DATA GENERATOR ---
 
@@ -586,4 +586,26 @@ export const feedbackData: Feedback[] = [
     date: '2025-10-20', 
     status: 'Resolved' 
   },
+];
+
+// --- ACHIEVEMENTS DATA (NEW) ---
+export const initialAchievements: Achievement[] = [
+  {
+    id: 1,
+    studentId: "ANS/2025/37",
+    studentName: "Student X-A-1",
+    title: "1st Place - Inter-School Debate",
+    category: "Gold",
+    date: "2025-10-15",
+    description: "Secured first position in the district level debate competition on 'AI in Education'."
+  },
+  {
+    id: 2,
+    studentId: "ANS/2025/37",
+    studentName: "Student X-A-1",
+    title: "Student of the Month",
+    category: "Special",
+    date: "2025-09-30",
+    description: "Awarded for exemplary conduct and academic excellence in September."
+  }
 ];

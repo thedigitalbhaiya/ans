@@ -5,35 +5,17 @@ import { Trophy, ChevronDown, Filter, LogIn, ChevronRight } from 'lucide-react';
 import { AuthContext, SchoolContext } from '../App';
 import { Link } from 'react-router-dom';
 
-const STANDARD_EXAMS = ['PT1', 'Half Yearly', 'PT2', 'Annual'];
-
 export const Results: React.FC = () => {
-  const { currentStudent, isLoggedIn } = useContext(AuthContext);
+  const { currentStudent } = useContext(AuthContext);
   const { examResults, currentSession: globalSession } = useContext(SchoolContext);
   
   // Local state for view preference, defaulting to global current session
   const [selectedSession, setSelectedSession] = useState(globalSession);
   const [expandedExam, setExpandedExam] = useState<string | null>(null);
 
-  if (!isLoggedIn) {
-      return (
-         <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-24 h-24 bg-slate-100 dark:bg-white/5 rounded-full flex items-center justify-center mb-6 text-slate-400">
-               <Trophy size={40} />
-            </div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Results Locked</h2>
-            <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-xs mx-auto">
-               Please login to view your exam marks and academic performance.
-            </p>
-            <Link to="/profile" className="mt-8 px-8 py-3 bg-slate-900 dark:bg-white text-white dark:text-black font-bold rounded-xl flex items-center gap-2 hover:scale-105 transition-transform">
-               <LogIn size={20} /> Login Now
-            </Link>
-         </div>
-      );
-  }
-
   // Get data for specific student > session
   const studentResults = examResults[currentStudent.admissionNo]?.[selectedSession] || {};
+  const exams = Object.keys(studentResults);
 
   return (
     <div className="space-y-6">
@@ -59,14 +41,15 @@ export const Results: React.FC = () => {
       </div>
 
       <div className="space-y-4">
-         {STANDARD_EXAMS.map((exam, index) => {
+         {exams.length > 0 ? (
+            exams.map((exam, index) => {
             const results = studentResults[exam] || [];
             const hasData = results.length > 0;
             const isOpen = expandedExam === exam;
             
             // Calculate total for preview
             const totalScore = results.reduce((acc, curr) => acc + curr.score, 0);
-            const maxScore = results.length * 100;
+            const maxScore = results.reduce((acc, curr) => acc + (curr.maxScore || 100), 0);
             const percentage = maxScore > 0 ? ((totalScore / maxScore) * 100).toFixed(1) : 0;
 
             return (
@@ -115,7 +98,7 @@ export const Results: React.FC = () => {
                                     </div>
                                     <div className="flex items-center gap-4">
                                        <div className="text-right">
-                                          <span className="block text-sm font-bold text-slate-900 dark:text-white">{sub.score}/100</span>
+                                          <span className="block text-sm font-bold text-slate-900 dark:text-white">{sub.score}/{sub.maxScore || 100}</span>
                                        </div>
                                        <span className="px-2 py-1 rounded-md bg-slate-100 dark:bg-white/10 text-xs font-bold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10 w-8 text-center">
                                           {sub.grade}
@@ -135,7 +118,12 @@ export const Results: React.FC = () => {
                   </AnimatePresence>
                </motion.div>
             );
-         })}
+         })) : (
+            <div className="flex flex-col items-center justify-center py-20 text-center text-slate-400">
+               <Trophy size={48} className="opacity-20 mb-4" />
+               <p>No results found for {selectedSession}</p>
+            </div>
+         )}
       </div>
     </div>
   );

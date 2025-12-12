@@ -2,34 +2,24 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Phone, 
-  ArrowRight, 
-  ShieldCheck, 
-  AlertCircle, 
-  Lock, 
-  ChevronLeft,
-  Loader2
+  Phone, ArrowRight, ShieldCheck, Lock, Loader2, ChevronLeft, AlertCircle
 } from 'lucide-react';
 import { Logo } from './Logo';
 import { AuthContext } from '../App';
 
 interface LoginProps {
   onLoginSuccess: () => void;
+  alertMessage?: string;
 }
 
-export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
+export const Login: React.FC<LoginProps> = ({ onLoginSuccess, alertMessage }) => {
   const { verifyNumber, verifyOTP, verifyPassword, loginStep, resetAuthFlow, loginRole } = useContext(AuthContext);
-  
-  // Local form state
   const [mobile, setMobile] = useState('');
   const [otp, setOtp] = useState('');
   const [password, setPassword] = useState('');
-  
-  // UI state
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Reset local state when flow resets
   useEffect(() => {
     if (loginStep === 0) {
       setOtp('');
@@ -38,297 +28,173 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     }
   }, [loginStep]);
 
-  // --- HANDLERS ---
-
   const handleMobileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (mobile.length !== 10) {
-      setError("Please enter a valid 10-digit mobile number.");
-      return;
-    }
-    
+    if (mobile.length !== 10) return setError("Enter a valid 10-digit number");
     setIsLoading(true);
     setError(null);
-    
     try {
       const exists = await verifyNumber(mobile);
-      if (!exists) {
-        setError("Number not found. Contact administration.");
-      }
-    } catch (err: any) {
-      setError(err.message || "Login failed.");
-    } finally {
-      setIsLoading(false);
-    }
+      if (!exists) setError("Number not found in school records.");
+    } catch (err: any) { setError(err.message || "Failed."); }
+    finally { setIsLoading(false); }
   };
 
   const handleOTPSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (otp.length !== 4) {
-      setError("Enter the 4-digit OTP.");
-      return;
-    }
-
+    if (otp.length !== 4) return setError("Enter 4-digit OTP");
     setIsLoading(true);
-    setError(null);
-
     try {
       const result = await verifyOTP(otp);
-      if (result === 'invalid') {
-        setError("Incorrect OTP. Try again.");
-      } else if (result === 'success') {
-        onLoginSuccess();
-      }
-      // 'next_step' is handled by Context state change automatically
-    } catch (err) {
-      setError("Verification failed.");
-    } finally {
-      setIsLoading(false);
-    }
+      if (result === 'invalid') setError("Incorrect OTP.");
+      else if (result === 'success') onLoginSuccess();
+    } catch (err) { setError("Verification failed."); }
+    finally { setIsLoading(false); }
   };
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!password) {
-      setError("Password is required.");
-      return;
-    }
-
     setIsLoading(true);
-    setError(null);
-
     try {
       const isValid = await verifyPassword(password);
-      if (isValid) {
-        onLoginSuccess();
-      } else {
-        setError("Access Denied: Incorrect Password.");
-      }
-    } catch (err) {
-      setError("Authentication error.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // --- DYNAMIC STYLES BASED ON STEP/ROLE ---
-  const getThemeColor = () => {
-    if (loginStep === 2) return 'from-slate-900 to-black'; // Admin Password
-    if (loginStep === 1) return 'from-indigo-600 to-blue-800'; // Verification
-    return 'from-ios-blue to-indigo-900'; // Initial
-  };
-
-  const getCardIcon = () => {
-    if (loginStep === 2) return <Lock size={24} className="text-red-500" />;
-    if (loginStep === 1) return <ShieldCheck size={24} className="text-indigo-500" />;
-    return <Logo className="w-12 h-12" />;
+      if (isValid) onLoginSuccess();
+      else setError("Incorrect Password.");
+    } catch (err) { setError("Error."); }
+    finally { setIsLoading(false); }
   };
 
   return (
-    <div className="w-full overflow-hidden relative">
-      {/* Dynamic Header Card */}
-      <motion.div 
-        layout
-        className={`
-          bg-gradient-to-br p-8 text-center relative overflow-hidden rounded-[2rem] m-2 transition-colors duration-500
-          ${getThemeColor()}
-        `}
-      >
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-8 -mt-8 blur-2xl"></div>
-          <div className="absolute bottom-0 left-0 w-24 h-24 bg-black/20 rounded-full -ml-8 -mb-8 blur-xl"></div>
-          
-          <div className="relative z-10 flex flex-col items-center">
-            <motion.div 
-              key={loginStep}
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="w-20 h-20 bg-white rounded-3xl flex items-center justify-center shadow-xl mb-4 p-3"
-            >
-               {getCardIcon()}
-            </motion.div>
-            <h1 className="text-xl font-extrabold text-white tracking-tight">Azim National School</h1>
-            <p className="text-blue-100 text-[10px] mt-1 font-bold tracking-widest uppercase">
-              {loginStep === 0 ? 'Bahadurganj' : loginRole === 'admin' ? 'Administrative Access' : 'Student Portal'}
-            </p>
-          </div>
+    <div className="w-full max-w-sm mx-auto p-4">
+      
+      {/* Icon */}
+      <motion.div layout className="flex justify-center mb-8">
+         <div className="w-24 h-24 bg-white dark:bg-[#1C1C1E] rounded-[2rem] shadow-apple flex items-center justify-center">
+            <Logo className="w-12 h-12" />
+         </div>
       </motion.div>
 
-      {/* Form Content */}
-      <div className="p-6 md:p-8">
-          <AnimatePresence mode="wait">
-            
-            {/* STEP 0: MOBILE INPUT */}
-            {loginStep === 0 && (
-              <motion.div
-                key="step0"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-              >
-                <div className="text-center mb-6">
-                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">Login</h2>
-                  <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Enter registered mobile number.</p>
-                </div>
-                
-                {error && <ErrorMessage message={error} />}
+      {/* Alert Banner for Redirects */}
+      {alertMessage && loginStep === 0 && (
+         <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 p-4 rounded-2xl bg-orange-50 dark:bg-orange-500/10 border border-orange-100 dark:border-orange-500/20 flex items-start gap-3"
+         >
+            <AlertCircle size={20} className="text-orange-500 flex-shrink-0 mt-0.5" />
+            <p className="text-sm font-bold text-orange-700 dark:text-orange-400 leading-tight">{alertMessage}</p>
+         </motion.div>
+      )}
 
-                <form onSubmit={handleMobileSubmit} className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Mobile Number</label>
-                    <div className="relative">
-                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                      <input 
-                        type="tel" 
-                        value={mobile}
-                        onChange={(e) => setMobile(e.target.value.replace(/\D/g, ''))} // Digits only
-                        placeholder="9876543210"
-                        className="w-full bg-slate-50 dark:bg-black/20 border-none rounded-2xl py-4 pl-12 pr-4 text-slate-900 dark:text-white font-medium placeholder-slate-400 focus:ring-2 focus:ring-ios-blue/50 outline-none transition-all tracking-wider font-mono"
-                        required
-                        maxLength={10}
-                      />
-                    </div>
+      <AnimatePresence mode="wait">
+        
+        {/* STEP 0: MOBILE */}
+        {loginStep === 0 && (
+          <motion.div
+            key="step0"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-6"
+          >
+            <div className="text-center">
+               <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Sign In</h2>
+               <p className="text-slate-500 text-sm mt-2">Use your registered mobile number to access the student portal.</p>
+            </div>
+
+            <form onSubmit={handleMobileSubmit} className="space-y-4">
+               <div className="relative group">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-ios-blue transition-colors">
+                     <span className="font-bold text-sm">+91</span>
                   </div>
+                  <input 
+                     type="tel" 
+                     value={mobile}
+                     onChange={(e) => setMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                     placeholder="Mobile Number"
+                     className="w-full bg-[#F2F2F7] dark:bg-[#1C1C1E] rounded-2xl py-4 pl-14 pr-4 text-lg font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-ios-blue/50 transition-all placeholder:font-medium"
+                     autoFocus
+                  />
+               </div>
+               
+               {error && <p className="text-red-500 text-xs font-bold text-center bg-red-50 dark:bg-red-500/10 py-2 rounded-lg">{error}</p>}
 
-                  <button 
-                    type="submit"
-                    disabled={isLoading}
-                    className="w-full bg-slate-900 dark:bg-white text-white dark:text-black py-4 rounded-2xl font-bold text-lg shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 mt-4 disabled:opacity-70 disabled:scale-100"
-                  >
-                    {isLoading ? <Loader2 className="animate-spin" /> : <>Get OTP <ArrowRight size={20} /></>}
-                  </button>
-                </form>
-              </motion.div>
-            )}
+               <button 
+                  disabled={isLoading || mobile.length < 10}
+                  className="w-full bg-ios-blue text-white py-4 rounded-2xl font-bold text-lg shadow-lg shadow-ios-blue/30 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:scale-100"
+               >
+                  {isLoading ? <Loader2 className="animate-spin" /> : <>Continue <ArrowRight size={20} /></>}
+               </button>
+            </form>
+          </motion.div>
+        )}
 
-            {/* STEP 1: OTP VERIFICATION */}
-            {loginStep === 1 && (
-              <motion.div
-                key="step1"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-              >
-                <div className="text-center mb-6">
-                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">Verification</h2>
-                  <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
-                    Enter code sent to <span className="font-mono text-slate-700 dark:text-slate-300 font-bold">+91 {mobile}</span>
-                  </p>
-                </div>
-                
-                {error && <ErrorMessage message={error} />}
+        {/* STEP 1: OTP */}
+        {loginStep === 1 && (
+          <motion.div
+            key="step1"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-6"
+          >
+            <div className="text-center">
+               <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Verify Identity</h2>
+               <p className="text-slate-500 text-sm mt-2">Enter the code sent to +91 {mobile}</p>
+            </div>
 
-                <form onSubmit={handleOTPSubmit} className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">One Time Password</label>
-                    <div className="relative">
-                      <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                      <input 
-                        type="password" 
-                        value={otp}
-                        onChange={(e) => setOtp(e.target.value.slice(0, 4))}
-                        placeholder="••••"
-                        className="w-full bg-slate-50 dark:bg-black/20 border-none rounded-2xl py-4 pl-12 pr-4 text-slate-900 dark:text-white font-medium placeholder-slate-400 focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all tracking-[0.5em] text-center font-mono text-xl"
-                        required
-                        maxLength={4}
-                        autoFocus
-                      />
-                    </div>
-                  </div>
+            <form onSubmit={handleOTPSubmit} className="space-y-6">
+               <div className="flex justify-center">
+                  <input 
+                     type="text" 
+                     value={otp}
+                     onChange={(e) => setOtp(e.target.value.slice(0, 4))}
+                     placeholder="••••"
+                     className="w-full text-center bg-[#F2F2F7] dark:bg-[#1C1C1E] rounded-2xl py-4 text-3xl font-mono font-bold tracking-[0.5em] text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-ios-green/50 transition-all"
+                     autoFocus
+                  />
+               </div>
 
-                  <button 
-                    type="submit"
-                    disabled={isLoading}
-                    className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 mt-4 disabled:opacity-70 disabled:scale-100"
-                  >
-                    {isLoading ? <Loader2 className="animate-spin" /> : 'Verify & Proceed'}
-                  </button>
-                  
-                  <div className="text-center mt-4">
-                     <button 
-                       type="button" 
-                       onClick={resetAuthFlow} 
-                       className="text-xs text-slate-500 hover:text-slate-900 dark:hover:text-white font-semibold flex items-center justify-center gap-1 mx-auto"
-                     >
-                       <ChevronLeft size={14} /> Change Number
-                     </button>
-                  </div>
-                </form>
-              </motion.div>
-            )}
+               {error && <p className="text-red-500 text-xs font-bold text-center">{error}</p>}
 
-            {/* STEP 2: PASSWORD (ADMIN ONLY) */}
-            {loginStep === 2 && (
-              <motion.div
-                key="step2"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-              >
-                <div className="text-center mb-6">
-                  <div className="inline-block px-3 py-1 bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-xs font-bold uppercase tracking-wider mb-2">
-                    Restricted Area
-                  </div>
-                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">2-Factor Auth</h2>
-                  <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Enter Administrator Password</p>
-                </div>
-                
-                {error && <ErrorMessage message={error} isError />}
+               <button 
+                  disabled={isLoading || otp.length < 4}
+                  className="w-full bg-ios-green text-white py-4 rounded-2xl font-bold text-lg shadow-lg shadow-ios-green/30 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:scale-100"
+               >
+                  {isLoading ? <Loader2 className="animate-spin" /> : 'Verify'}
+               </button>
 
-                <form onSubmit={handlePasswordSubmit} className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Secure Password</label>
-                    <div className="relative">
-                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                      <input 
-                        type="password" 
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="w-full bg-slate-50 dark:bg-black/20 border-none rounded-2xl py-4 pl-12 pr-4 text-slate-900 dark:text-white font-medium placeholder-slate-400 focus:ring-2 focus:ring-red-500/50 outline-none transition-all"
-                        required
-                        autoFocus
-                      />
-                    </div>
-                  </div>
+               <button type="button" onClick={resetAuthFlow} className="w-full text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors">
+                  Change Number
+               </button>
+            </form>
+          </motion.div>
+        )}
 
-                  <button 
-                    type="submit"
-                    disabled={isLoading}
-                    className="w-full bg-slate-900 dark:bg-white text-white dark:text-black py-4 rounded-2xl font-bold text-lg shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 mt-4 disabled:opacity-70 disabled:scale-100"
-                  >
-                    {isLoading ? <Loader2 className="animate-spin" /> : 'Secure Login'}
-                  </button>
-                  
-                  <div className="text-center mt-4">
-                     <button 
-                       type="button" 
-                       onClick={resetAuthFlow} 
-                       className="text-xs text-slate-500 hover:text-red-600 font-semibold"
-                     >
-                       Cancel Access
-                     </button>
-                  </div>
-                </form>
-              </motion.div>
-            )}
+        {/* STEP 2: PASSWORD (ADMIN) */}
+        {loginStep === 2 && (
+          <motion.div key="step2" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+             <div className="text-center">
+               <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Admin Access</h2>
+               <p className="text-slate-500 text-sm mt-2">Enter your secure password</p>
+            </div>
+            <form onSubmit={handlePasswordSubmit} className="space-y-4">
+               <input 
+                  type="password" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                  className="w-full bg-[#F2F2F7] dark:bg-[#1C1C1E] rounded-2xl py-4 px-6 text-lg font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-ios-blue/50 transition-all"
+                  autoFocus
+               />
+               {error && <p className="text-red-500 text-xs font-bold text-center">{error}</p>}
+               <button disabled={isLoading} className="w-full bg-slate-900 dark:bg-white text-white dark:text-black py-4 rounded-2xl font-bold text-lg shadow-lg active:scale-95 transition-all">
+                  {isLoading ? <Loader2 className="animate-spin" /> : 'Unlock'}
+               </button>
+            </form>
+          </motion.div>
+        )}
 
-          </AnimatePresence>
-      </div>
+      </AnimatePresence>
     </div>
   );
 };
-
-// Helper Component for Errors
-const ErrorMessage = ({ message, isError = true }: { message: string, isError?: boolean }) => (
-  <motion.div 
-    initial={{ opacity: 0, y: -10 }}
-    animate={{ opacity: 1, y: 0 }}
-    className={`
-      ${isError ? 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400' : 'bg-orange-50 text-orange-600'} 
-      text-sm font-semibold p-3 rounded-xl flex items-center gap-2 mb-4
-    `}
-  >
-    <AlertCircle size={16} />
-    {message}
-  </motion.div>
-);
