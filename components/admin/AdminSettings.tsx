@@ -6,7 +6,8 @@ import {
   Settings, Save, Layout, Building2, UploadCloud, 
   ToggleLeft, ShieldAlert, Calendar, 
   Trash2, AlertTriangle, Download, RefreshCw, AlertOctagon, X, Image as ImageIcon,
-  Lock, FileJson, Database
+  Lock, FileJson, Database, IdCard, PaintBucket,
+  UserCog, ShieldCheck
 } from 'lucide-react';
 
 // --- TYPES ---
@@ -41,7 +42,7 @@ export const AdminSettings: React.FC = () => {
 
   // Local state for forms
   const [formData, setFormData] = useState(settings);
-  const [activeTab, setActiveTab] = useState<'General' | 'Modules' | 'Danger'>('General');
+  const [activeTab, setActiveTab] = useState<'General' | 'Modules' | 'Roles' | 'Danger'>('General');
   const [modalConfig, setModalConfig] = useState<ModalConfig | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -102,6 +103,15 @@ export const AdminSettings: React.FC = () => {
     const newVal = !settings[key];
     updateSettings({ [key]: newVal });
     setFormData(prev => ({ ...prev, [key]: newVal }));
+  };
+
+  // --- HANDLERS: PERMISSIONS ---
+  const handlePermissionToggle = (key: keyof typeof settings.staffPermissions) => {
+    const currentPermissions = settings.staffPermissions;
+    const updatedPermissions = { ...currentPermissions, [key]: !currentPermissions[key] };
+    updateSettings({ staffPermissions: updatedPermissions });
+    // Update local state implicitly via re-render or manually sync if needed, 
+    // but context update usually triggers re-render.
   };
 
   // --- DANGER ZONE LOGIC ---
@@ -251,12 +261,12 @@ export const AdminSettings: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex p-1 bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-sm border border-slate-100 dark:border-white/5 w-fit">
-         {['General', 'Modules', 'Danger'].map((tab) => (
+      <div className="flex p-1 bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-sm border border-slate-100 dark:border-white/5 w-fit overflow-x-auto no-scrollbar">
+         {['General', 'Modules', 'Roles', 'Danger'].map((tab) => (
              <button
                 key={tab}
                 onClick={() => setActiveTab(tab as any)}
-                className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
                     activeTab === tab 
                     ? tab === 'Danger' ? 'bg-red-500 text-white shadow-md' : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-md'
                     : 'text-slate-500 hover:text-slate-900 dark:text-slate-400'
@@ -268,96 +278,144 @@ export const AdminSettings: React.FC = () => {
       </div>
 
       <div className="max-w-4xl">
-        {/* GENERAL TAB */}
+        {/* GENERAL TAB - GROUPED SECTIONS */}
         {activeTab === 'General' && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
                 
-                {/* Branding Section */}
-                <div className="bg-white dark:bg-[#1C1C1E] p-8 rounded-[2rem] shadow-sm border border-slate-100 dark:border-white/5">
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-                            <Building2 size={20} />
-                        </div>
-                        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Identity & Branding</h2>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <InputGroup label="School Name" name="schoolName" value={formData.schoolName} onChange={handleChange} />
-                        <InputGroup label="Contact Number" name="contactNumber" value={formData.contactNumber} onChange={handleChange} />
-                        <InputGroup label="Email Address" name="email" value={formData.email} onChange={handleChange} />
-                        <div className="md:col-span-2">
-                            <InputGroup label="School Address" name="schoolAddress" value={formData.schoolAddress} onChange={handleChange} />
-                        </div>
-                    </div>
-
-                    {/* Logo Uploader */}
-                    <div className="mt-8 pt-8 border-t border-slate-100 dark:border-white/5">
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">School Logo</label>
-                        <div className="flex items-center gap-6">
-                            <div className="relative w-24 h-24 bg-slate-50 dark:bg-white/5 rounded-2xl border-2 border-slate-100 dark:border-white/10 p-2 group">
-                                <img src={formData.logoUrl} alt="Logo" className="w-full h-full object-contain" />
-                                <button 
-                                  onClick={handleRemoveLogo}
-                                  className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
-                                  title="Reset to Default"
-                                >
-                                  <X size={12} />
-                                </button>
+                {/* GROUP 1: SCHOOL IDENTITY (Global) */}
+                <section>
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 ml-2">School Identity</h3>
+                    <div className="bg-white dark:bg-[#1C1C1E] p-8 rounded-[2rem] shadow-sm border border-slate-100 dark:border-white/5">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                                <Building2 size={20} />
                             </div>
-                            
-                            <div className="flex-1">
-                                <input 
-                                  type="file" 
-                                  accept="image/*" 
-                                  ref={fileInputRef} 
-                                  className="hidden" 
-                                  onChange={handleLogoUpload} 
-                                />
-                                <div 
-                                  onClick={() => fileInputRef.current?.click()}
-                                  className="border-2 border-dashed border-slate-300 dark:border-white/20 rounded-2xl h-24 flex flex-col items-center justify-center text-slate-400 cursor-pointer hover:border-ios-blue hover:text-ios-blue hover:bg-slate-50 dark:hover:bg-white/5 transition-all"
-                                >
-                                    <UploadCloud size={24} />
-                                    <span className="text-sm font-bold mt-2">Click to Upload New Logo</span>
-                                    <span className="text-[10px] opacity-70">Recommended: 512x512 PNG (Max 500KB)</span>
+                            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Global Branding</h2>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <InputGroup label="School Name" name="schoolName" value={formData.schoolName} onChange={handleChange} />
+                            <InputGroup label="Contact Number" name="contactNumber" value={formData.contactNumber} onChange={handleChange} />
+                            <InputGroup label="Email Address" name="email" value={formData.email} onChange={handleChange} />
+                            <div className="md:col-span-2">
+                                <InputGroup label="School Address" name="schoolAddress" value={formData.schoolAddress} onChange={handleChange} />
+                            </div>
+                        </div>
+
+                        {/* Logo Uploader */}
+                        <div className="mt-8 pt-8 border-t border-slate-100 dark:border-white/5">
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">School Logo</label>
+                            <div className="flex items-center gap-6">
+                                <div className="relative w-24 h-24 bg-slate-50 dark:bg-white/5 rounded-2xl border-2 border-slate-100 dark:border-white/10 p-2 group">
+                                    <img src={formData.logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                                    <button 
+                                    onClick={handleRemoveLogo}
+                                    className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+                                    title="Reset to Default"
+                                    >
+                                    <X size={12} />
+                                    </button>
+                                </div>
+                                
+                                <div className="flex-1">
+                                    <input 
+                                    type="file" 
+                                    accept="image/*" 
+                                    ref={fileInputRef} 
+                                    className="hidden" 
+                                    onChange={handleLogoUpload} 
+                                    />
+                                    <div 
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="border-2 border-dashed border-slate-300 dark:border-white/20 rounded-2xl h-24 flex flex-col items-center justify-center text-slate-400 cursor-pointer hover:border-ios-blue hover:text-ios-blue hover:bg-slate-50 dark:hover:bg-white/5 transition-all"
+                                    >
+                                        <UploadCloud size={24} />
+                                        <span className="text-sm font-bold mt-2">Click to Upload New Logo</span>
+                                        <span className="text-[10px] opacity-70">Recommended: 512x512 PNG (Max 500KB)</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                </section>
 
-                {/* Session Management */}
-                <div className="bg-white dark:bg-[#1C1C1E] p-8 rounded-[2rem] shadow-sm border border-slate-100 dark:border-white/5">
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center">
-                            <Calendar size={20} />
+                {/* GROUP 2: ID CARD CONFIGURATION */}
+                <section>
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 ml-2">Digital ID Card</h3>
+                    <div className="bg-white dark:bg-[#1C1C1E] p-8 rounded-[2rem] shadow-sm border border-slate-100 dark:border-white/5">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 flex items-center justify-center">
+                                <IdCard size={20} />
+                            </div>
+                            <h2 className="text-xl font-bold text-slate-900 dark:text-white">ID Card Template</h2>
                         </div>
-                        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Academic Session</h2>
-                    </div>
-                    
-                    <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-black/20 rounded-2xl border border-slate-100 dark:border-white/5">
-                        <div className="flex-1">
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Current Active Session</label>
-                            <select 
-                                name="currentSession"
-                                value={formData.currentSession}
-                                onChange={handleChange}
-                                className="w-full bg-transparent font-bold text-lg text-slate-900 dark:text-white outline-none"
-                            >
-                                <option>2024-25</option>
-                                <option>2025-26</option>
-                                <option>2026-27</option>
-                            </select>
-                        </div>
-                        <div className="text-xs text-slate-400 max-w-[200px] text-right">
-                            Changing this will filter all student data globally.
-                        </div>
-                    </div>
-                </div>
 
-                <div className="flex justify-end">
-                    <button onClick={saveGeneralSettings} className="bg-ios-blue text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-ios-blue/30 active:scale-95 transition-transform flex items-center gap-2">
-                        <Save size={18} /> Save Changes
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <InputGroup label="Card Header (School Name)" name="idCardHeader" value={formData.idCardHeader} onChange={handleChange} placeholder="e.g. AZIM NATIONAL SCHOOL" />
+                            <div className="space-y-1">
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2"><PaintBucket size={12}/> Header Background Color</label>
+                                <div className="flex items-center gap-3">
+                                    <input 
+                                        type="color" 
+                                        name="idCardThemeColor"
+                                        value={formData.idCardThemeColor} 
+                                        onChange={handleChange}
+                                        className="h-11 w-12 rounded-xl bg-transparent cursor-pointer border-none outline-none"
+                                    />
+                                    <input 
+                                        type="text" 
+                                        name="idCardThemeColor"
+                                        value={formData.idCardThemeColor} 
+                                        onChange={handleChange}
+                                        className="flex-1 p-3 bg-slate-50 dark:bg-black/20 rounded-xl outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white font-mono uppercase"
+                                    />
+                                </div>
+                            </div>
+                            <div className="md:col-span-2">
+                                <InputGroup label="Sub-Header (Affiliation)" name="idCardSubHeader" value={formData.idCardSubHeader} onChange={handleChange} placeholder="e.g. Affiliated to CBSE, Delhi" />
+                            </div>
+                            <div className="md:col-span-2">
+                                <InputGroup label="Short Address" name="idCardAddress" value={formData.idCardAddress} onChange={handleChange} placeholder="City, State" />
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* GROUP 3: ACADEMIC SESSION */}
+                <section>
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 ml-2">Academic Cycle</h3>
+                    <div className="bg-white dark:bg-[#1C1C1E] p-8 rounded-[2rem] shadow-sm border border-slate-100 dark:border-white/5">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+                                <Calendar size={20} />
+                            </div>
+                            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Active Session</h2>
+                        </div>
+                        
+                        <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-black/20 rounded-2xl border border-slate-100 dark:border-white/5">
+                            <div className="flex-1">
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Current Year</label>
+                                <select 
+                                    name="currentSession"
+                                    value={formData.currentSession}
+                                    onChange={handleChange}
+                                    className="w-full bg-transparent font-bold text-lg text-slate-900 dark:text-white outline-none cursor-pointer"
+                                >
+                                    <option>2024-25</option>
+                                    <option>2025-26</option>
+                                    <option>2026-27</option>
+                                </select>
+                            </div>
+                            <div className="text-xs text-slate-400 max-w-[200px] text-right">
+                                Changing this will filter all student data globally.
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <div className="flex justify-end sticky bottom-6 z-20">
+                    <button onClick={saveGeneralSettings} className="bg-ios-blue text-white px-8 py-4 rounded-2xl font-bold shadow-xl shadow-ios-blue/30 active:scale-95 transition-transform flex items-center gap-2">
+                        <Save size={18} /> Save All Changes
                     </button>
                 </div>
             </motion.div>
@@ -372,6 +430,7 @@ export const AdminSettings: React.FC = () => {
                             <Layout size={20} />
                         </div>
                         <h2 className="text-xl font-bold text-slate-900 dark:text-white">Feature Toggles</h2>
+                        <p className="text-sm text-slate-500 ml-auto">Control visibility for Students</p>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -381,6 +440,56 @@ export const AdminSettings: React.FC = () => {
                         <ToggleSwitch label="Admissions Open" desc="Show admission inquiry form" isOn={settings.admissionsOpen} onToggle={() => handleToggle('admissionsOpen')} />
                         <ToggleSwitch label="Sibling Login" desc="Allow multiple profiles per number" isOn={settings.siblingLoginEnabled} onToggle={() => handleToggle('siblingLoginEnabled')} />
                         <ToggleSwitch label="Homework" desc="Enable homework & assignment module" isOn={settings.enableHomework} onToggle={() => handleToggle('enableHomework')} />
+                    </div>
+                </div>
+            </motion.div>
+        )}
+
+        {/* ROLES TAB */}
+        {activeTab === 'Roles' && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                <div className="bg-white dark:bg-[#1C1C1E] p-8 rounded-[2rem] shadow-sm border border-slate-100 dark:border-white/5">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                            <UserCog size={20} />
+                        </div>
+                        <div>
+                           <h2 className="text-xl font-bold text-slate-900 dark:text-white">Office Staff Access</h2>
+                           <p className="text-xs text-slate-500">Control what modules 'Staff' role can manage</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <ToggleSwitch 
+                           label="Manage Fees" 
+                           desc="Access to invoices and payment records" 
+                           isOn={settings.staffPermissions.allowFees} 
+                           onToggle={() => handlePermissionToggle('allowFees')} 
+                        />
+                        <ToggleSwitch 
+                           label="Manage Admissions" 
+                           desc="View and process new inquiries" 
+                           isOn={settings.staffPermissions.allowAdmissions} 
+                           onToggle={() => handlePermissionToggle('allowAdmissions')} 
+                        />
+                        <ToggleSwitch 
+                           label="Manage Circulars" 
+                           desc="Create and publish notices" 
+                           isOn={settings.staffPermissions.allowNotices} 
+                           onToggle={() => handlePermissionToggle('allowNotices')} 
+                        />
+                        <ToggleSwitch 
+                           label="Manage Gallery" 
+                           desc="Upload photos and magazines" 
+                           isOn={settings.staffPermissions.allowGallery} 
+                           onToggle={() => handlePermissionToggle('allowGallery')} 
+                        />
+                        <ToggleSwitch 
+                           label="Manage Help Desk" 
+                           desc="View and resolve feedback" 
+                           isOn={settings.staffPermissions.allowFeedback} 
+                           onToggle={() => handlePermissionToggle('allowFeedback')} 
+                        />
                     </div>
                 </div>
             </motion.div>
@@ -545,7 +654,7 @@ const ConfirmationModal = ({ config, onClose }: { config: ModalConfig, onClose: 
 
 // --- HELPER COMPONENTS ---
 
-const InputGroup = ({ label, name, value, onChange }: any) => (
+const InputGroup = ({ label, name, value, onChange, placeholder }: any) => (
     <div className="space-y-1">
         <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">{label}</label>
         <input 
@@ -553,6 +662,7 @@ const InputGroup = ({ label, name, value, onChange }: any) => (
             name={name}
             value={value} 
             onChange={onChange}
+            placeholder={placeholder}
             className="w-full p-3 bg-slate-50 dark:bg-black/20 rounded-xl outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white font-medium border border-transparent focus:border-ios-blue/30 transition-all"
         />
     </div>

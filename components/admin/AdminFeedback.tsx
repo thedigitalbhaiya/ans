@@ -14,15 +14,32 @@ import {
   AlertTriangle,
   ThumbsUp,
   HelpCircle,
-  Inbox
+  Inbox,
+  ShieldAlert
 } from 'lucide-react';
-import { SchoolContext } from '../../App';
+import { SchoolContext, AuthContext } from '../../App';
 import { Feedback } from '../../types';
 
 export const AdminFeedback: React.FC = () => {
   const { feedback, setFeedback } = useContext(SchoolContext);
+  const { currentAdmin } = useContext(AuthContext);
   const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(null);
   const [filterType, setFilterType] = useState<'All' | 'Complaint' | 'Suggestion' | 'Appreciation'>('All');
+
+  // PERMISSION CHECK
+  if (currentAdmin?.role === 'Teacher') {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] text-center">
+        <div className="w-24 h-24 bg-red-50 dark:bg-red-500/10 rounded-full flex items-center justify-center mb-6">
+           <ShieldAlert size={48} className="text-red-500" />
+        </div>
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Access Denied</h2>
+        <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-sm">
+           Feedback and complaints are managed by the administrative office.
+        </p>
+      </div>
+    );
+  }
 
   // Filter and Sort Logic
   const filteredFeedback = feedback

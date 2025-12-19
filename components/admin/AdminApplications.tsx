@@ -1,25 +1,43 @@
 
 import React, { useContext, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, Check, X, Calendar, Clock, User, Filter, AlertCircle, ChevronRight, Inbox, Phone, MessageCircle, Trash2 } from 'lucide-react';
+import { FileText, Check, X, Calendar, Clock, User, Filter, AlertCircle, ChevronRight, Inbox, Phone, MessageCircle, Trash2, Lock } from 'lucide-react';
 import { SchoolContext, AuthContext } from '../../App';
 import { LeaveApplication } from '../../types';
 
 export const AdminApplications: React.FC = () => {
   const { leaveApplications, updateLeaveStatus, setLeaveApplications } = useContext(SchoolContext);
-  const { allStudents } = useContext(AuthContext); // Access student data for contact info
+  const { allStudents, currentAdmin } = useContext(AuthContext); 
   const [selectedApp, setSelectedApp] = useState<LeaveApplication | null>(null);
   const [filter, setFilter] = useState<'All' | 'Pending' | 'Processed'>('Pending');
+
+  // Teacher Filter Logic
+  const isTeacher = currentAdmin?.role === 'Teacher';
+  const teacherClass = currentAdmin?.assignedClass || '';
+  const teacherSection = currentAdmin?.assignedSection || '';
 
   const filteredApplications = useMemo(() => {
     return leaveApplications
       .filter(app => {
-        if (filter === 'Pending') return app.status === 'Pending';
-        if (filter === 'Processed') return app.status !== 'Pending';
+        // Status Filter
+        if (filter === 'Pending') {
+            if (app.status !== 'Pending') return false;
+        }
+        if (filter === 'Processed') {
+            if (app.status === 'Pending') return false;
+        }
+
+        // Teacher Restriction Filter
+        if (isTeacher) {
+            // Assuming app.class format is "X-A"
+            const targetClassStr = `${teacherClass}-${teacherSection}`;
+            if (app.class !== targetClassStr) return false;
+        }
+
         return true;
       })
       .sort((a, b) => new Date(b.appliedDate).getTime() - new Date(a.appliedDate).getTime());
-  }, [leaveApplications, filter]);
+  }, [leaveApplications, filter, isTeacher, teacherClass, teacherSection]);
 
   const handleStatusChange = (id: number, status: 'Approved' | 'Rejected') => {
     updateLeaveStatus(id, status);
@@ -70,6 +88,13 @@ export const AdminApplications: React.FC = () => {
           <p className="text-slate-500 dark:text-slate-400 mt-1">Manage student leave applications.</p>
         </div>
         
+        {isTeacher && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-500/10 rounded-xl text-blue-700 dark:text-blue-300 font-bold border border-blue-100 dark:border-blue-500/20 whitespace-nowrap text-sm">
+                <Lock size={14} /> 
+                <span>Managing Class: {teacherClass}-{teacherSection}</span>
+            </div>
+        )}
+
         <div className="flex bg-white dark:bg-[#1C1C1E] p-1.5 rounded-xl border border-slate-100 dark:border-white/5 shadow-sm">
            {['Pending', 'Processed', 'All'].map((f) => (
                <button 

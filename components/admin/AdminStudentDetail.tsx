@@ -42,7 +42,19 @@ export const AdminStudentDetail: React.FC = () => {
     }, [admissionNo, allStudents]);
 
     const handleUpdateStudent = (updatedData: Student) => {
-        updateStudentData(updatedData); // Uses Context helper to sync all states
+        // Find by ORIGINAL ID (student?.admissionNo) to handle ID changes
+        // 'student' holds the state before this edit
+        if (student) {
+            setAllStudents(prev => prev.map(s => s.admissionNo === student.admissionNo ? updatedData : s));
+            
+            // If ID changed, navigate to new URL
+            if (student.admissionNo !== updatedData.admissionNo) {
+                navigate(`/admin/students/${encodeURIComponent(updatedData.admissionNo)}`, { replace: true });
+            }
+        }
+        
+        // Optimistic update
+        setStudent(updatedData);
         setShowEditModal(false);
     };
 
@@ -77,7 +89,8 @@ export const AdminStudentDetail: React.FC = () => {
             const reader = new FileReader();
             reader.onloadend = () => {
                 const base64 = reader.result as string;
-                updateStudentData({ ...student, profilePic: base64 });
+                // Use the new update handler to ensure state sync
+                handleUpdateStudent({ ...student, profilePic: base64 });
             };
             reader.readAsDataURL(file);
         }
@@ -86,7 +99,7 @@ export const AdminStudentDetail: React.FC = () => {
     const handleRemovePhoto = () => {
         if (!student) return;
         if (window.confirm("Remove this student's profile photo? It will revert to initials.")) {
-            updateStudentData({ ...student, profilePic: undefined }); // Remove field
+            handleUpdateStudent({ ...student, profilePic: undefined }); // Remove field
         }
     };
 

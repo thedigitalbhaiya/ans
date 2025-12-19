@@ -63,6 +63,9 @@ export const Attendance: React.FC = () => {
 
     if (!dailyRecord) return 'unknown'; // No data recorded for this day yet
 
+    // Handle Holidays globally or individually
+    if (dailyRecord[currentStudent.admissionNo] === 'holiday') return 'holiday';
+
     return dailyRecord[currentStudent.admissionNo] || 'unknown';
   };
 
@@ -71,14 +74,15 @@ export const Attendance: React.FC = () => {
   let presentCount = 0;
   let absentCount = 0;
   let lateCount = 0;
-  let totalRecorded = 0;
+  let holidayCount = 0;
+  let totalRecorded = 0; // "Working Days" excluding holidays
 
   for (let i = 1; i <= daysInMonth; i++) {
      const status = getStatus(i);
-     if (status === 'present') presentCount++;
-     if (status === 'absent') absentCount++;
-     if (status === 'late') lateCount++;
-     if (['present', 'absent', 'late'].includes(status)) totalRecorded++;
+     if (status === 'present') { presentCount++; totalRecorded++; }
+     if (status === 'absent') { absentCount++; totalRecorded++; }
+     if (status === 'late') { lateCount++; totalRecorded++; }
+     if (status === 'holiday') holidayCount++;
   }
 
   return (
@@ -119,7 +123,7 @@ export const Attendance: React.FC = () => {
           { label: 'Working Days', value: totalRecorded, color: 'text-ios-blue', bg: 'bg-ios-blue/10' },
           { label: 'Present', value: presentCount, color: 'text-ios-green', bg: 'bg-ios-green/10' },
           { label: 'Absent', value: absentCount, color: 'text-ios-red', bg: 'bg-ios-red/10' },
-          { label: 'Late', value: lateCount, color: 'text-ios-orange', bg: 'bg-ios-orange/10' },
+          { label: 'Holidays', value: holidayCount, color: 'text-purple-500', bg: 'bg-purple-100 dark:bg-purple-500/20' },
         ].map((stat, idx) => (
           <motion.div 
             key={idx}
@@ -173,12 +177,13 @@ export const Attendance: React.FC = () => {
                       ? 'bg-ios-blue text-white shadow-lg shadow-ios-blue/30' 
                       : 'text-slate-700 dark:text-slate-200 group-hover:bg-slate-50 dark:group-hover:bg-white/10'}
                     ${status === 'weekend' ? 'text-slate-300 dark:text-slate-600' : ''}
+                    ${status === 'holiday' ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300' : ''}
                   `}>
                     {day}
                   </div>
                   
                   {/* Status Dot */}
-                  {status !== 'weekend' && status !== 'future' && status !== 'unknown' && (
+                  {status !== 'weekend' && status !== 'future' && status !== 'unknown' && status !== 'holiday' && (
                     <div className={`mt-2 w-1.5 h-1.5 rounded-full transition-transform group-hover:scale-150 ${
                       status === 'present' ? 'bg-ios-green shadow-[0_0_8px_rgba(52,199,89,0.5)]' : 
                       status === 'absent' ? 'bg-ios-red shadow-[0_0_8px_rgba(255,59,48,0.5)]' : 'bg-ios-orange'
@@ -192,7 +197,7 @@ export const Attendance: React.FC = () => {
       </motion.div>
       
       {/* Legend */}
-      <div className="flex flex-wrap gap-6 justify-center text-sm text-slate-500 dark:text-slate-400 pt-2">
+      <div className="flex flex-wrap gap-4 justify-center text-sm text-slate-500 dark:text-slate-400 pt-2">
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white dark:bg-[#1C1C1E] shadow-sm border border-slate-100 dark:border-white/5">
           <div className="w-2 h-2 rounded-full bg-ios-green"></div> Present
         </div>
@@ -201,6 +206,9 @@ export const Attendance: React.FC = () => {
         </div>
          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white dark:bg-[#1C1C1E] shadow-sm border border-slate-100 dark:border-white/5">
           <div className="w-2 h-2 rounded-full bg-ios-orange"></div> Late
+        </div>
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white dark:bg-[#1C1C1E] shadow-sm border border-slate-100 dark:border-white/5">
+          <div className="w-2 h-2 rounded-full bg-purple-500"></div> Holiday
         </div>
       </div>
     </div>

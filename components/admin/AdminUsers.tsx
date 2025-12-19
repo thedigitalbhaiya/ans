@@ -13,7 +13,9 @@ import {
   CheckCircle,
   X,
   UserCog,
-  GraduationCap
+  GraduationCap,
+  Eye,
+  Lock
 } from 'lucide-react';
 import { AuthContext } from '../../App';
 import { AdminUser } from '../../types';
@@ -35,7 +37,9 @@ const emptyAdmin: Omit<AdminUser, 'id'> = {
 export const AdminUsers: React.FC = () => {
   const { adminUsers, setAdminUsers, currentAdmin } = useContext(AuthContext);
   const [showModal, setShowModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+  const [viewingUser, setViewingUser] = useState<AdminUser | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Permission Check
@@ -57,6 +61,11 @@ export const AdminUsers: React.FC = () => {
   const handleOpenModal = (user: AdminUser | null) => {
     setEditingUser(user);
     setShowModal(true);
+  };
+
+  const handleViewDetails = (user: AdminUser) => {
+    setViewingUser(user);
+    setShowDetailModal(true);
   };
 
   const handleDelete = (id: number) => {
@@ -90,25 +99,25 @@ export const AdminUsers: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 pb-20">
+    <div className="space-y-8 pb-20 md:pb-10">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-end gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
-             <UserCog className="text-ios-blue" size={32} /> Staff Management
+             <UserCog className="text-ios-blue" size={32} /> Staff Directory
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">Manage Teachers, Admins, and Class Assignments.</p>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">Manage Teachers, Admins, and Roles.</p>
         </div>
         
         <button 
           onClick={() => handleOpenModal(null)}
-          className="bg-ios-blue text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-ios-blue/30 active:scale-95 transition-transform flex items-center gap-2"
+          className="bg-ios-blue text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-ios-blue/30 active:scale-95 transition-transform flex items-center gap-2 w-full md:w-auto justify-center"
         >
           <Plus size={20} /> Add New User
         </button>
       </div>
 
-      {/* List */}
+      {/* List Container */}
       <div className="bg-white dark:bg-[#1C1C1E] rounded-[2rem] border border-slate-100 dark:border-white/5 shadow-sm overflow-hidden">
          {/* Toolbar */}
          <div className="p-4 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/5">
@@ -124,7 +133,8 @@ export const AdminUsers: React.FC = () => {
             </div>
          </div>
 
-         <div className="overflow-x-auto">
+         {/* Responsive List / Table */}
+         <div className="md:block hidden">
             <table className="w-full text-left">
                <thead className="bg-slate-50 dark:bg-white/5 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   <tr>
@@ -137,14 +147,14 @@ export const AdminUsers: React.FC = () => {
                </thead>
                <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                   {filteredUsers.map(user => (
-                     <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
-                        <td className="p-5">
+                     <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
+                        <td className="p-5 cursor-pointer" onClick={() => handleViewDetails(user)}>
                            <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden">
                                  <img src={user.photo} alt="" className="w-full h-full object-cover" />
                               </div>
                               <div>
-                                 <p className="font-bold text-slate-900 dark:text-white">{user.name}</p>
+                                 <p className="font-bold text-slate-900 dark:text-white group-hover:text-ios-blue transition-colors">{user.name}</p>
                                  <p className="text-xs text-slate-500">@{user.username}</p>
                               </div>
                            </div>
@@ -153,7 +163,7 @@ export const AdminUsers: React.FC = () => {
                            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
                              user.role === 'Super Admin' ? 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400' : 
                              user.role === 'Teacher' ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400' :
-                             'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300'
+                             'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400'
                            }`}>
                               {user.role}
                            </span>
@@ -174,8 +184,16 @@ export const AdminUsers: React.FC = () => {
                         <td className="p-5">
                            <div className="flex justify-end gap-2">
                               <button 
+                                onClick={() => handleViewDetails(user)}
+                                className="p-2 rounded-lg bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 text-slate-600 dark:text-slate-300 transition-colors"
+                                title="View Details"
+                              >
+                                 <Eye size={16} />
+                              </button>
+                              <button 
                                 onClick={() => handleOpenModal(user)}
                                 className="p-2 rounded-lg bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 text-slate-600 dark:text-slate-300 transition-colors"
+                                title="Edit"
                               >
                                  <Edit size={16} />
                               </button>
@@ -183,6 +201,7 @@ export const AdminUsers: React.FC = () => {
                                 <button 
                                   onClick={() => handleDelete(user.id)}
                                   className="p-2 rounded-lg bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 text-red-500 transition-colors"
+                                  title="Remove"
                                 >
                                    <Trash2 size={16} />
                                 </button>
@@ -194,6 +213,69 @@ export const AdminUsers: React.FC = () => {
                </tbody>
             </table>
          </div>
+
+         {/* Mobile Card View */}
+         <div className="md:hidden p-4 space-y-4">
+            {filteredUsers.map(user => (
+               <div key={user.id} className="bg-slate-50 dark:bg-white/5 rounded-2xl p-4 flex flex-col gap-4 border border-slate-100 dark:border-white/5">
+                  <div className="flex justify-between items-start">
+                     <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-full bg-slate-200 overflow-hidden">
+                           <img src={user.photo} alt="" className="w-full h-full object-cover" />
+                        </div>
+                        <div>
+                           <p className="font-bold text-slate-900 dark:text-white">{user.name}</p>
+                           <p className="text-xs text-slate-500">@{user.username}</p>
+                        </div>
+                     </div>
+                     <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        user.role === 'Super Admin' ? 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400' : 
+                        user.role === 'Teacher' ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400' :
+                        'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400'
+                     }`}>
+                        {user.role}
+                     </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                     <div className="text-slate-500">Assignment:</div>
+                     <div className="text-slate-900 dark:text-white font-medium text-right">
+                        {user.role === 'Teacher' && user.assignedClass ? (
+                           <span className="flex items-center justify-end gap-1">
+                              <GraduationCap size={14} className="text-ios-blue" />
+                              {user.assignedClass}-{user.assignedSection}
+                           </span>
+                        ) : 'Full Access'}
+                     </div>
+                     <div className="text-slate-500">Mobile:</div>
+                     <div className="text-slate-900 dark:text-white font-medium font-mono text-right">{user.mobile}</div>
+                  </div>
+
+                  <div className="flex gap-2 pt-2 border-t border-slate-200 dark:border-white/10">
+                     <button 
+                        onClick={() => handleViewDetails(user)}
+                        className="flex-1 py-2 rounded-xl bg-white dark:bg-white/10 text-slate-700 dark:text-slate-200 font-bold text-sm shadow-sm flex items-center justify-center gap-2"
+                     >
+                        <Eye size={16} /> Details
+                     </button>
+                     <button 
+                        onClick={() => handleOpenModal(user)}
+                        className="flex-1 py-2 rounded-xl bg-white dark:bg-white/10 text-slate-700 dark:text-slate-200 font-bold text-sm shadow-sm flex items-center justify-center gap-2"
+                     >
+                        <Edit size={16} /> Edit
+                     </button>
+                     {user.id !== currentAdmin.id && (
+                        <button 
+                           onClick={() => handleDelete(user.id)}
+                           className="flex-1 py-2 rounded-xl bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 font-bold text-sm flex items-center justify-center gap-2"
+                        >
+                           <Trash2 size={16} />
+                        </button>
+                     )}
+                  </div>
+               </div>
+            ))}
+         </div>
       </div>
 
       <AnimatePresence>
@@ -204,9 +286,73 @@ export const AdminUsers: React.FC = () => {
                onClose={() => setShowModal(false)} 
             />
          )}
+         {showDetailModal && viewingUser && (
+            <ViewUserModal 
+               user={viewingUser}
+               onClose={() => setShowDetailModal(false)}
+            />
+         )}
       </AnimatePresence>
     </div>
   );
+};
+
+const ViewUserModal: React.FC<{ user: AdminUser, onClose: () => void }> = ({ user, onClose }) => {
+   return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+         <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={onClose}
+         />
+         <motion.div 
+            initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+            className="relative bg-white dark:bg-[#1C1C1E] w-full max-w-sm rounded-[2rem] shadow-2xl p-8 overflow-hidden"
+         >
+            <div className="absolute top-0 right-0 p-4">
+               <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/10"><X size={20} /></button>
+            </div>
+            
+            <div className="flex flex-col items-center text-center">
+               <div className="w-24 h-24 rounded-full overflow-hidden mb-4 border-4 border-slate-100 dark:border-white/10 shadow-lg">
+                  <img src={user.photo} className="w-full h-full object-cover" alt="" />
+               </div>
+               <h2 className="text-xl font-bold text-slate-900 dark:text-white">{user.name}</h2>
+               <span className={`mt-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+                  user.role === 'Super Admin' ? 'bg-purple-100 text-purple-700' : 
+                  user.role === 'Teacher' ? 'bg-green-100 text-green-700' :
+                  'bg-blue-100 text-blue-700'
+               }`}>
+                  {user.role}
+               </span>
+            </div>
+
+            <div className="mt-8 space-y-4">
+               <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-xl border border-slate-100 dark:border-white/5">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Username</p>
+                  <p className="font-mono font-bold text-slate-800 dark:text-slate-200">{user.username}</p>
+               </div>
+               <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-xl border border-slate-100 dark:border-white/5 flex justify-between items-center">
+                  <div>
+                     <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Password</p>
+                     <p className="font-mono font-bold text-slate-800 dark:text-slate-200">{user.password}</p>
+                  </div>
+                  <Lock size={16} className="text-slate-400" />
+               </div>
+               <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-xl border border-slate-100 dark:border-white/5">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Contact</p>
+                  <p className="font-bold text-slate-800 dark:text-slate-200">{user.mobile}</p>
+               </div>
+               {user.role === 'Teacher' && (
+                  <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-xl border border-slate-100 dark:border-white/5">
+                     <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Assigned To</p>
+                     <p className="font-bold text-slate-800 dark:text-slate-200">Class {user.assignedClass} - {user.assignedSection}</p>
+                  </div>
+               )}
+            </div>
+         </motion.div>
+      </div>
+   );
 };
 
 const AdminUserForm: React.FC<{ user: AdminUser | null, onSave: (data: any) => void, onClose: () => void }> = ({ user, onSave, onClose }) => {

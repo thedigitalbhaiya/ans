@@ -50,7 +50,7 @@ const adminNavItems = [
   { path: '/admin/homework', label: 'Homework', icon: BookOpen }, 
   { path: '/admin/circulars', label: 'Circulars', icon: Bell },
   { path: '/admin/gallery', label: 'e-Magazine', icon: Image },
-  { path: '/admin/achievements', label: 'Achievements', icon: Award }, // NEW
+  { path: '/admin/achievements', label: 'Achievements', icon: Award },
   { path: '/admin/applications', label: 'Applications', icon: FileText },
   { path: '/admin/admissions', label: 'Admissions', icon: UserPlus },
   { path: '/admin/socials', label: 'Community', icon: MessageCircle },
@@ -61,7 +61,7 @@ const adminNavItems = [
 export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { theme, toggleTheme } = useContext(ThemeContext);
   const { logout, currentAdmin, updateAdminProfile, adminUsers, setCurrentAdmin } = useContext(AuthContext);
-  const { feedback, unreadCount, notifications, markAllAsRead } = useContext(SchoolContext);
+  const { feedback, unreadCount, notifications, markAllAsRead, isModalOpen, settings } = useContext(SchoolContext);
   const location = useLocation();
   const navigate = useNavigate();
   
@@ -87,11 +87,34 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
   // Filter Nav Items based on Role
   const visibleNavItems = useMemo(() => {
     return adminNavItems.filter(item => {
-      if (item.path === '/admin/settings' && currentAdmin?.role !== 'Super Admin') return false;
-      if (item.path === '/admin/fees' && currentAdmin?.role === 'Teacher') return false;
+      const role = currentAdmin?.role;
+      
+      // Super Admin sees everything
+      if (role === 'Super Admin') return true;
+
+      // Teacher Restrictions
+      if (role === 'Teacher') {
+        if (item.path === '/admin/settings') return false;
+        if (item.path === '/admin/fees') return false;
+        if (item.path === '/admin/feedback') return false;
+        if (item.path === '/admin/admissions') return false; 
+        return true; 
+      }
+
+      // Office Staff Restrictions (Controlled by Principal/Settings)
+      if (role === 'Staff') {
+        if (item.path === '/admin/settings') return false;
+        if (item.path === '/admin/fees' && !settings.staffPermissions.allowFees) return false;
+        if (item.path === '/admin/admissions' && !settings.staffPermissions.allowAdmissions) return false;
+        if (item.path === '/admin/circulars' && !settings.staffPermissions.allowNotices) return false;
+        if (item.path === '/admin/gallery' && !settings.staffPermissions.allowGallery) return false;
+        if (item.path === '/admin/feedback' && !settings.staffPermissions.allowFeedback) return false;
+        return true;
+      }
+
       return true;
     });
-  }, [currentAdmin]);
+  }, [currentAdmin, settings.staffPermissions]);
 
   // Primary Mobile Items (Bottom Dock)
   const mobilePrimaryItems = visibleNavItems.slice(0, 4);
@@ -136,11 +159,7 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
     return `${Math.floor(hours / 24)} days ago`;
   };
 
-  const handleSwitchProfile = (user: AdminUser) => {
-    setCurrentAdmin(user);
-    setShowProfileMenu(false);
-    navigate('/admin/dashboard');
-  };
+  const isDashboard = location.pathname === '/admin/dashboard';
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-ios-bg dark:bg-black font-sans transition-colors duration-500">
@@ -203,7 +222,7 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
                 } ${isCollapsed ? 'justify-center' : 'px-4'}`}>
                   <div className="relative">
                      <Icon size={20} className="flex-shrink-0" strokeWidth={2.5} />
-                     {isFeedback && unreadFeedbackCount > 0 && (
+                     {isFeedback && unreadFeedbackCount > 0 && currentAdmin?.role !== 'Teacher' && (
                         <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-[#1C1C1E] animate-pulse"></div>
                      )}
                   </div>
@@ -212,7 +231,7 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
                     {item.label}
                   </span>
                   
-                  {isFeedback && !isCollapsed && unreadFeedbackCount > 0 && (
+                  {isFeedback && !isCollapsed && unreadFeedbackCount > 0 && currentAdmin?.role !== 'Teacher' && (
                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${isActive ? 'bg-white/20 text-white' : 'bg-red-100 text-red-600'}`}>
                         {unreadFeedbackCount}
                      </span>
@@ -238,10 +257,24 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
       <main className="flex-1 h-full overflow-y-auto overflow-x-hidden relative no-scrollbar bg-ios-bg dark:bg-black transition-colors duration-500 flex flex-col">
         {/* TOP HEADER */}
         <header className="sticky top-0 z-30 flex items-center justify-between px-6 py-4 bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-xl border-b border-ios-separator/10">
-           <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm font-medium">
-              <Link to="/admin/dashboard" className="hover:text-ios-blue transition-colors">Admin</Link>
-              <ChevronRight size={14} />
-              <span className="text-slate-900 dark:text-white capitalize truncate max-w-[120px]">{location.pathname.split('/').pop()}</span>
+           
+           <div className="flex items-center gap-3">
+              {/* Back Button (Only if not dashboard) */}
+              {!isDashboard && (
+                <button
+                  onClick={() => navigate(-1)}
+                  className="p-2 -ml-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 text-slate-500 dark:text-slate-400 transition-colors"
+                  title="Go Back"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+              )}
+
+              <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm font-medium">
+                  <Link to="/admin/dashboard" className="hover:text-ios-blue transition-colors">Admin</Link>
+                  <ChevronRight size={14} />
+                  <span className="text-slate-900 dark:text-white capitalize truncate max-w-[120px]">{location.pathname.split('/').pop()}</span>
+              </div>
            </div>
 
            <div className="flex items-center gap-3">
@@ -350,50 +383,48 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
         </div>
       </main>
 
-      {/* MOBILE BOTTOM DOCK (Dynamic Island Style) */}
-      <nav className="lg:hidden fixed bottom-6 left-4 right-4 z-50">
-        <div className="bg-white/90 dark:bg-[#1C1C1E]/90 backdrop-blur-2xl rounded-[2rem] shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] border border-white/20 dark:border-white/5 p-1.5 flex justify-between items-center">
+      {/* MOBILE FIXED BOTTOM TAB BAR */}
+      <nav 
+        className={`lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/85 dark:bg-[#1C1C1E]/85 backdrop-blur-xl border-t border-slate-200/50 dark:border-white/10 pb-safe-area-bottom transition-transform duration-300 ease-in-out ${isModalOpen ? 'translate-y-full' : 'translate-y-0'}`}
+      >
+        <div className="flex justify-between items-end px-2 pt-2 pb-5">
           {mobilePrimaryItems.map((item) => {
             const isActive = location.pathname.startsWith(item.path);
             const Icon = item.icon;
+
             return (
               <Link
                 key={item.path}
                 to={item.path}
                 onClick={() => setShowMobileMenu(false)}
-                className={`relative flex flex-col items-center justify-center w-14 h-14 rounded-[1.5rem] transition-all duration-300 ${isActive ? 'text-white' : 'text-slate-400 dark:text-slate-500'}`}
+                className="flex-1 flex flex-col items-center justify-center gap-1 py-1 active:scale-90 transition-transform duration-200 group"
               >
-                {isActive && (
-                  <motion.div
-                    layoutId="mobile-dock-active"
-                    className="absolute inset-0 bg-ios-blue shadow-lg shadow-ios-blue/30 rounded-[1.5rem]"
-                    initial={false}
-                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                  />
-                )}
-                <div className="relative z-10 flex flex-col items-center gap-0.5">
-                   <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
+                <div className={`relative ${isActive ? 'text-ios-blue dark:text-blue-400' : 'text-[#8E8E93] dark:text-[#98989D]'}`}>
+                   <Icon 
+                      size={26} 
+                      strokeWidth={isActive ? 2.5 : 2} 
+                      className={`transition-all duration-300 ${isActive ? 'scale-105' : 'scale-100'}`}
+                   />
                 </div>
+                
+                <span className={`text-[10px] font-medium tracking-tight transition-colors duration-200 leading-none ${isActive ? 'text-ios-blue dark:text-blue-400 font-semibold' : 'text-[#8E8E93] dark:text-[#98989D]'}`}>
+                  {item.label}
+                </span>
               </Link>
             );
           })}
           
-          {/* Apps Button */}
+          {/* Menu Button */}
           <button
             onClick={() => setShowMobileMenu(!showMobileMenu)}
-            className={`relative flex flex-col items-center justify-center w-14 h-14 rounded-[1.5rem] transition-all duration-300 ${showMobileMenu ? 'text-white' : 'text-slate-400 dark:text-slate-500'}`}
+            className="flex-1 flex flex-col items-center justify-center gap-1 py-1 active:scale-90 transition-transform duration-200 group"
           >
-             {showMobileMenu && (
-                <motion.div
-                   layoutId="mobile-dock-active"
-                   className="absolute inset-0 bg-slate-900 dark:bg-white shadow-lg rounded-[1.5rem]"
-                   initial={false}
-                   transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                />
-             )}
-             <div className={`relative z-10 ${showMobileMenu ? 'text-white dark:text-black' : ''}`}>
-                {showMobileMenu ? <X size={24} strokeWidth={2.5} /> : <Grid size={24} />}
+             <div className={`relative ${showMobileMenu ? 'text-ios-blue dark:text-blue-400' : 'text-[#8E8E93] dark:text-[#98989D]'}`}>
+                {showMobileMenu ? <X size={26} strokeWidth={2.5} /> : <Grid size={26} strokeWidth={2} />}
              </div>
+             <span className={`text-[10px] font-medium tracking-tight transition-colors duration-200 leading-none ${showMobileMenu ? 'text-ios-blue dark:text-blue-400 font-semibold' : 'text-[#8E8E93] dark:text-[#98989D]'}`}>
+                Menu
+             </span>
           </button>
         </div>
       </nav>

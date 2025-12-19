@@ -1,21 +1,35 @@
 
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   MessageCircle, 
   Link as LinkIcon,
   CheckCircle2,
   Circle,
-  Users
+  Users,
+  Lock
 } from 'lucide-react';
-import { SchoolContext } from '../../App';
+import { SchoolContext, AuthContext } from '../../App';
 
 const CLASSES = ["Nursery", "LKG", "UKG", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
 const SECTIONS = ["A", "B", "C", "D"];
 
 export const AdminSocials: React.FC = () => {
   const { socialLinks, updateSocialLink } = useContext(SchoolContext);
-  const [selectedClass, setSelectedClass] = useState("X");
+  const { currentAdmin } = useContext(AuthContext);
+  
+  const isTeacher = currentAdmin?.role === 'Teacher';
+  const teacherClass = currentAdmin?.assignedClass || 'X';
+  const teacherSection = currentAdmin?.assignedSection || 'A';
+
+  const [selectedClass, setSelectedClass] = useState(isTeacher ? teacherClass : "X");
+
+  // Lock to teacher's class if applicable
+  useEffect(() => {
+    if (isTeacher) {
+        setSelectedClass(teacherClass);
+    }
+  }, [isTeacher, teacherClass]);
 
   // Helper to check validity
   const isValidLink = (link: string) => link.startsWith('https://');
@@ -29,25 +43,32 @@ export const AdminSocials: React.FC = () => {
         <p className="text-slate-500 dark:text-slate-400">Assign specific group links for each class and section.</p>
       </div>
 
-      {/* Class Selector Scroll */}
-      <div className="bg-white dark:bg-[#1C1C1E] p-2 rounded-2xl shadow-sm border border-slate-100 dark:border-white/5 overflow-x-auto no-scrollbar sticky top-0 z-10">
-         <div className="flex gap-2 min-w-max">
-            {CLASSES.map((cls) => (
-               <button
-                  key={cls}
-                  onClick={() => setSelectedClass(cls)}
-                  className={`
-                     px-6 py-3 rounded-xl text-sm font-bold transition-all duration-300
-                     ${selectedClass === cls 
-                        ? 'bg-slate-900 dark:bg-white text-white dark:text-black shadow-lg scale-105' 
-                        : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-white/10'}
-                  `}
-               >
-                  Class {cls}
-               </button>
-            ))}
-         </div>
-      </div>
+      {/* Class Selector Scroll - Hide or Disable for Teachers */}
+      {!isTeacher ? (
+        <div className="bg-white dark:bg-[#1C1C1E] p-2 rounded-2xl shadow-sm border border-slate-100 dark:border-white/5 overflow-x-auto no-scrollbar sticky top-0 z-10">
+            <div className="flex gap-2 min-w-max">
+                {CLASSES.map((cls) => (
+                <button
+                    key={cls}
+                    onClick={() => setSelectedClass(cls)}
+                    className={`
+                        px-6 py-3 rounded-xl text-sm font-bold transition-all duration-300
+                        ${selectedClass === cls 
+                            ? 'bg-slate-900 dark:bg-white text-white dark:text-black shadow-lg scale-105' 
+                            : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-white/10'}
+                    `}
+                >
+                    Class {cls}
+                </button>
+                ))}
+            </div>
+        </div>
+      ) : (
+        <div className="bg-blue-50 dark:bg-blue-500/10 p-4 rounded-2xl border border-blue-100 dark:border-blue-500/20 flex items-center gap-3 text-blue-700 dark:text-blue-300">
+            <Lock size={20} />
+            <span className="font-bold text-sm">Restricted Mode: Editing for your assigned Class {teacherClass} only.</span>
+        </div>
+      )}
 
       {/* Section Matrix */}
       <div className="bg-white dark:bg-[#1C1C1E] rounded-[2.5rem] p-8 shadow-sm border border-slate-100 dark:border-white/5 min-h-[400px]">
@@ -66,6 +87,11 @@ export const AdminSocials: React.FC = () => {
                const key = `${selectedClass}-${section}`;
                const currentLink = socialLinks[key] || '';
                const hasValidLink = isValidLink(currentLink);
+               
+               // If teacher, only allow editing their section? Or whole class?
+               // Requirement says "gc link of their class", implies full class access or specific section.
+               // Let's assume full class access for simplicity, or just highlight their section.
+               const isAssignedSection = isTeacher ? section === teacherSection : true;
 
                return (
                   <motion.div 
@@ -78,11 +104,12 @@ export const AdminSocials: React.FC = () => {
                         ${hasValidLink 
                            ? 'border-green-500/30 bg-green-50/30 dark:bg-green-500/5' 
                            : 'border-slate-100 dark:border-white/10 bg-slate-50 dark:bg-black/20 focus-within:border-ios-blue'}
+                        ${!isAssignedSection && isTeacher ? 'opacity-50 pointer-events-none grayscale' : ''}
                      `}
                   >
                      {/* Section Badge */}
                      <div className="w-full md:w-auto flex justify-between md:justify-start items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-white dark:bg-white/10 flex items-center justify-center font-bold text-lg text-slate-900 dark:text-white shadow-sm border border-slate-100 dark:border-white/5">
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg shadow-sm border ${isAssignedSection ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white border-slate-100 dark:border-white/5' : 'bg-slate-200 dark:bg-white/5 text-slate-400 border-transparent'}`}>
                            {section}
                         </div>
                         <div className="md:hidden">
@@ -95,10 +122,11 @@ export const AdminSocials: React.FC = () => {
                         <LinkIcon size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${hasValidLink ? 'text-green-600' : 'text-slate-400'}`} />
                         <input 
                            type="text" 
-                           placeholder="Paste WhatsApp Group Link (https://chat.whatsapp.com/...)" 
+                           placeholder={isAssignedSection ? "Paste WhatsApp Group Link..." : "Restricted Section"}
                            value={currentLink}
                            onChange={(e) => updateSocialLink(selectedClass, section, e.target.value)}
-                           className="w-full pl-12 pr-4 py-4 rounded-xl bg-white dark:bg-[#2C2C2E] border-none outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white font-medium shadow-sm transition-all"
+                           disabled={!isAssignedSection}
+                           className="w-full pl-12 pr-4 py-4 rounded-xl bg-white dark:bg-[#2C2C2E] border-none outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white font-medium shadow-sm transition-all disabled:bg-transparent disabled:shadow-none"
                         />
                      </div>
 

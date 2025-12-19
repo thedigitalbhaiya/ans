@@ -37,6 +37,14 @@ export interface AdminUser {
   mobile: string;
 }
 
+export interface StaffPermissions {
+  allowFees: boolean;
+  allowAdmissions: boolean;
+  allowNotices: boolean;
+  allowGallery: boolean;
+  allowFeedback: boolean;
+}
+
 export interface SchoolSettings {
   schoolName: string;
   schoolAddress: string;
@@ -44,7 +52,13 @@ export interface SchoolSettings {
   email: string;
   logoUrl: string;
   currentSession: string;
-  totalTeachers: number; // New field
+  totalTeachers: number; 
+  
+  // ID Card Customization
+  idCardHeader: string; // Name appearing on ID Card (e.g. AZIM NATIONAL SCHOOL)
+  idCardSubHeader: string; // e.g. Affiliated to CBSE
+  idCardAddress: string; // Short address for ID card
+  idCardThemeColor: string; // Hex code for ID card header
   
   // Feature Toggles
   enableStudentLogin: boolean;
@@ -52,7 +66,10 @@ export interface SchoolSettings {
   admissionsOpen: boolean;
   enableOnlineFees: boolean;
   siblingLoginEnabled: boolean;
-  enableHomework: boolean; // New Toggle
+  enableHomework: boolean; 
+
+  // Role Permissions (Principal Controls)
+  staffPermissions: StaffPermissions;
 }
 
 // FORMAT: "CLASS-SECTION": "URL" (e.g., "X-A": "https://...")
@@ -132,7 +149,7 @@ export interface AttendanceRecord {
 }
 
 // Map of [dateString]: { [studentId]: status }
-export type AttendanceRecords = Record<string, Record<string, 'present' | 'absent' | 'late'>>;
+export type AttendanceRecords = Record<string, Record<string, 'present' | 'absent' | 'late' | 'holiday'>>;
 
 
 export interface FeeRecord {
@@ -166,6 +183,7 @@ export interface Album {
   coverUrl: string;
   images: string[]; // Array of image URLs
   category: string;
+  featured?: boolean; // New field for Hero Carousel
 }
 
 export interface Magazine {
@@ -232,8 +250,12 @@ export interface Achievement {
   studentName: string; // Snapshot in case student is deleted
   title: string; // e.g. "1st Place - Annual Sports"
   category: 'Gold' | 'Silver' | 'Bronze' | 'Special';
-  date: string;
+  type?: 'Academic' | 'Sports' | 'Cultural' | 'Leadership' | 'Other'; // NEW
+  date: string; // Display Date (e.g. event date)
+  timestamp: string; // ISO String for 24h ticker
   description?: string;
+  photoUrl?: string; // Optional photo
+  cheers?: number; // NEW: Number of likes/cheers
 }
 
 export enum Theme {

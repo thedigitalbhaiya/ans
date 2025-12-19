@@ -14,7 +14,8 @@ import {
   MapPin, 
   School,
   Calendar,
-  Clock
+  Clock,
+  ChevronRight
 } from 'lucide-react';
 import { SchoolContext } from '../../App';
 import { AdmissionApplication } from '../../types';
@@ -68,9 +69,9 @@ export const AdminAdmissions: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 h-[calc(100vh-140px)] flex flex-col">
+    <div className="space-y-6 h-[calc(100vh-140px)] flex flex-col pb-20 md:pb-0">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-end gap-4 shrink-0">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 shrink-0">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
             <Inbox className="text-ios-blue" size={32} /> Admission Inbox
@@ -78,16 +79,16 @@ export const AdminAdmissions: React.FC = () => {
           <p className="text-slate-500 dark:text-slate-400 mt-1">Manage and respond to new student inquiries.</p>
         </div>
         
-        <div className="flex gap-2 bg-white dark:bg-[#1C1C1E] p-1.5 rounded-xl border border-slate-100 dark:border-white/5 shadow-sm">
+        <div className="flex gap-2 bg-white dark:bg-[#1C1C1E] p-1.5 rounded-xl border border-slate-100 dark:border-white/5 shadow-sm w-full md:w-auto">
            <button 
              onClick={() => setFilterStatus('New')}
-             className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${filterStatus === 'New' ? 'bg-blue-500 text-white shadow-md' : 'text-slate-500 hover:text-slate-900 dark:text-slate-400'}`}
+             className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-bold transition-all ${filterStatus === 'New' ? 'bg-blue-500 text-white shadow-md' : 'text-slate-500 hover:text-slate-900 dark:text-slate-400'}`}
            >
              New
            </button>
            <button 
              onClick={() => setFilterStatus('All')}
-             className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${filterStatus === 'All' ? 'bg-slate-900 dark:bg-white text-white dark:text-black shadow-md' : 'text-slate-500 hover:text-slate-900 dark:text-slate-400'}`}
+             className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-bold transition-all ${filterStatus === 'All' ? 'bg-slate-900 dark:bg-white text-white dark:text-black shadow-md' : 'text-slate-500 hover:text-slate-900 dark:text-slate-400'}`}
            >
              All
            </button>
@@ -95,16 +96,16 @@ export const AdminAdmissions: React.FC = () => {
       </div>
 
       {/* Filter Bar */}
-      <div className="flex justify-between items-center bg-white dark:bg-[#1C1C1E] p-4 rounded-[1.5rem] border border-slate-100 dark:border-white/5 shrink-0">
-         <div className="flex items-center gap-2 text-slate-500">
+      <div className="flex flex-col md:flex-row justify-between items-center bg-white dark:bg-[#1C1C1E] p-4 rounded-[1.5rem] border border-slate-100 dark:border-white/5 shrink-0 gap-3">
+         <div className="flex items-center gap-2 text-slate-500 w-full md:w-auto">
             <Filter size={18} />
             <span className="text-sm font-bold">Filter By Class:</span>
          </div>
-         <div className="relative">
+         <div className="relative w-full md:w-auto">
             <select 
               value={selectedClass}
               onChange={(e) => setSelectedClass(e.target.value)}
-              className="appearance-none bg-slate-50 dark:bg-black/20 pl-4 pr-10 py-2 rounded-lg text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-ios-blue/50 cursor-pointer"
+              className="w-full md:w-auto appearance-none bg-slate-50 dark:bg-black/20 pl-4 pr-10 py-2 rounded-lg text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-ios-blue/50 cursor-pointer"
             >
                {uniqueClasses.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
@@ -114,8 +115,8 @@ export const AdminAdmissions: React.FC = () => {
 
       {/* Inbox List */}
       <div className="flex-1 bg-white dark:bg-[#1C1C1E] rounded-[2rem] border border-slate-100 dark:border-white/5 shadow-sm overflow-hidden flex flex-col">
-         {/* Table Header */}
-         <div className="grid grid-cols-[1fr_1.5fr_1fr_1fr_1fr] gap-4 p-5 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/5 text-xs font-bold text-slate-500 uppercase tracking-wider sticky top-0 z-10">
+         {/* Desktop Table Header */}
+         <div className="hidden md:grid grid-cols-[1fr_1.5fr_1fr_1fr_1fr] gap-4 p-5 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/5 text-xs font-bold text-slate-500 uppercase tracking-wider sticky top-0 z-10">
             <div>Date Received</div>
             <div>Student Name</div>
             <div>Target Class</div>
@@ -123,8 +124,8 @@ export const AdminAdmissions: React.FC = () => {
             <div className="text-center">Status</div>
          </div>
 
-         {/* Table Body */}
-         <div className="overflow-y-auto flex-1">
+         {/* List Body */}
+         <div className="overflow-y-auto flex-1 p-2 md:p-0">
             {filteredAdmissions.length > 0 ? (
                filteredAdmissions.map((app) => (
                   <motion.div 
@@ -134,21 +135,39 @@ export const AdminAdmissions: React.FC = () => {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     className={`
-                      grid grid-cols-[1fr_1.5fr_1fr_1fr_1fr] gap-4 p-5 border-b border-slate-100 dark:border-white/5 items-center cursor-pointer transition-colors
-                      ${selectedInquiry?.id === app.id ? 'bg-ios-blue/5 dark:bg-blue-500/10' : 'hover:bg-slate-50 dark:hover:bg-white/5'}
+                      cursor-pointer transition-colors
+                      md:grid md:grid-cols-[1fr_1.5fr_1fr_1fr_1fr] md:gap-4 md:p-5 md:border-b border-slate-100 dark:border-white/5 md:items-center
+                      flex flex-col gap-2 p-4 rounded-2xl mb-2 bg-slate-50 dark:bg-white/5 md:bg-transparent md:mb-0 md:rounded-none
+                      ${selectedInquiry?.id === app.id ? 'ring-2 ring-ios-blue md:ring-0 md:bg-ios-blue/5 dark:md:bg-blue-500/10' : 'hover:bg-slate-100 dark:hover:bg-white/10'}
                     `}
                   >
-                     <div className="text-sm font-medium text-slate-500 flex items-center gap-2">
-                        {app.status === 'Received' && <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" title="New Inquiry"></div>}
-                        {new Date(app.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                     {/* Mobile Header Line */}
+                     <div className="flex justify-between items-center md:block">
+                        <div className="text-sm font-medium text-slate-500 flex items-center gap-2">
+                            {app.status === 'Received' && <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" title="New Inquiry"></div>}
+                            {new Date(app.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                        </div>
+                        <span className={`md:hidden px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${getStatusColor(app.status)}`}>
+                           {app.status === 'Received' ? 'New' : app.status}
+                        </span>
                      </div>
-                     <div className="font-bold text-slate-900 dark:text-white truncate">
+
+                     <div className="font-bold text-slate-900 dark:text-white truncate text-base md:text-sm">
                         {app.studentName}
                         <span className="block text-xs font-normal text-slate-400">c/o {app.fatherName}</span>
                      </div>
-                     <div className="text-sm text-slate-700 dark:text-slate-300 font-medium">{app.admissionForClass}</div>
-                     <div className="text-sm text-slate-500 font-mono">{app.mobile}</div>
-                     <div className="flex justify-center">
+
+                     <div className="text-sm text-slate-700 dark:text-slate-300 font-medium flex justify-between md:block">
+                        <span className="md:hidden text-slate-400 text-xs uppercase font-bold">Class:</span>
+                        {app.admissionForClass}
+                     </div>
+
+                     <div className="text-sm text-slate-500 font-mono flex justify-between md:block">
+                        <span className="md:hidden text-slate-400 text-xs font-sans uppercase font-bold">Mobile:</span>
+                        {app.mobile}
+                     </div>
+
+                     <div className="hidden md:flex justify-center">
                         <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getStatusColor(app.status)}`}>
                            {app.status === 'Received' ? 'New' : app.status}
                         </span>
@@ -180,7 +199,7 @@ export const AdminAdmissions: React.FC = () => {
                  className="relative bg-white/90 dark:bg-[#1C1C1E]/90 backdrop-blur-xl w-full max-w-2xl rounded-[2.5rem] shadow-2xl border border-white/20 overflow-hidden flex flex-col max-h-[90vh]"
                >
                   {/* Modal Header */}
-                  <div className="p-8 pb-6 border-b border-slate-200 dark:border-white/10">
+                  <div className="p-6 md:p-8 md:pb-6 border-b border-slate-200 dark:border-white/10">
                      <div className="flex justify-between items-start">
                         <div>
                            <div className="flex items-center gap-3 mb-2">
@@ -191,8 +210,8 @@ export const AdminAdmissions: React.FC = () => {
                                  <Clock size={12} /> {selectedInquiry.date}
                               </span>
                            </div>
-                           <h2 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">{selectedInquiry.studentName}</h2>
-                           <p className="text-slate-500 dark:text-slate-400 text-lg">Admission for <span className="text-slate-900 dark:text-white font-bold">{selectedInquiry.admissionForClass}</span></p>
+                           <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">{selectedInquiry.studentName}</h2>
+                           <p className="text-slate-500 dark:text-slate-400 text-base md:text-lg">Admission for <span className="text-slate-900 dark:text-white font-bold">{selectedInquiry.admissionForClass}</span></p>
                         </div>
                         <button 
                            onClick={() => setSelectedInquiry(null)}
@@ -204,7 +223,7 @@ export const AdminAdmissions: React.FC = () => {
                   </div>
 
                   {/* Modal Body */}
-                  <div className="p-8 overflow-y-auto space-y-8">
+                  <div className="p-6 md:p-8 overflow-y-auto space-y-6">
                      {/* Parent & Contact */}
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="p-5 rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5">
@@ -253,24 +272,24 @@ export const AdminAdmissions: React.FC = () => {
                   </div>
 
                   {/* Modal Footer (Actions) */}
-                  <div className="p-6 bg-slate-50 dark:bg-white/5 border-t border-slate-200 dark:border-white/10 flex flex-wrap gap-3 justify-end">
+                  <div className="p-6 bg-slate-50 dark:bg-white/5 border-t border-slate-200 dark:border-white/10 flex flex-col md:flex-row flex-wrap gap-3 justify-end">
                      <button 
                         onClick={() => handleDelete(selectedInquiry.id)}
-                        className="px-5 py-3 rounded-xl font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2 mr-auto"
+                        className="px-5 py-3 rounded-xl font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center justify-center gap-2 md:mr-auto w-full md:w-auto order-last md:order-first"
                      >
                         <Trash2 size={18} /> Delete
                      </button>
 
                      <a 
                         href={`tel:${selectedInquiry.mobile}`}
-                        className="px-6 py-3 rounded-xl font-bold bg-white dark:bg-[#2C2C2E] border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white shadow-sm hover:bg-slate-50 dark:hover:bg-white/10 transition-colors flex items-center gap-2"
+                        className="px-6 py-3 rounded-xl font-bold bg-white dark:bg-[#2C2C2E] border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white shadow-sm hover:bg-slate-50 dark:hover:bg-white/10 transition-colors flex items-center justify-center gap-2 w-full md:w-auto"
                      >
                         <Phone size={18} /> Call
                      </a>
 
                      <button 
                         onClick={() => handleWhatsApp(selectedInquiry.mobile, selectedInquiry.studentName)}
-                        className="px-6 py-3 rounded-xl font-bold bg-[#25D366] text-white shadow-lg hover:brightness-110 transition-all flex items-center gap-2"
+                        className="px-6 py-3 rounded-xl font-bold bg-[#25D366] text-white shadow-lg hover:brightness-110 transition-all flex items-center justify-center gap-2 w-full md:w-auto"
                      >
                         <MessageCircle size={18} /> WhatsApp
                      </button>
@@ -278,7 +297,7 @@ export const AdminAdmissions: React.FC = () => {
                      {selectedInquiry.status === 'Received' && (
                         <button 
                            onClick={() => handleMarkContacted(selectedInquiry.id)}
-                           className="px-6 py-3 rounded-xl font-bold bg-ios-blue text-white shadow-lg hover:brightness-110 transition-all flex items-center gap-2"
+                           className="px-6 py-3 rounded-xl font-bold bg-ios-blue text-white shadow-lg hover:brightness-110 transition-all flex items-center justify-center gap-2 w-full md:w-auto"
                         >
                            <CheckCircle size={18} /> Mark Contacted
                         </button>

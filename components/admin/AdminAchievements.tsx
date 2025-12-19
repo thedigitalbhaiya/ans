@@ -1,36 +1,40 @@
 
-import React, { useState, useContext, useMemo } from 'react';
+import React, { useState, useContext, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, Search, ChevronDown, Check, Trash2, Award, Calendar, User, Star } from 'lucide-react';
+import { Trophy, ChevronDown, Check, Trash2, Award, Calendar, User, Camera, Upload, LayoutTemplate, Medal, Image as ImageIcon, Sparkles, Send, Star, Crown } from 'lucide-react';
 import { AuthContext, SchoolContext } from '../../App';
-import { Achievement, Student } from '../../types';
+import { Achievement } from '../../types';
 
 export const AdminAchievements: React.FC = () => {
   const { allStudents } = useContext(AuthContext);
   const { achievements, addAchievement, deleteAchievement } = useContext(SchoolContext);
 
-  // Selector State
+  // Form State
   const [selectedClass, setSelectedClass] = useState('X');
   const [selectedSection, setSelectedSection] = useState('A');
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
-  
-  // Form State
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<'Gold' | 'Silver' | 'Bronze' | 'Special'>('Gold');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [type, setType] = useState<'Academic' | 'Sports' | 'Cultural' | 'Leadership' | 'Other'>('Academic');
   const [description, setDescription] = useState('');
+  
+  // Visual Mode
+  const [photoUrl, setPhotoUrl] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Derived Data
+  // Filters
   const uniqueClasses = useMemo(() => Array.from(new Set(allStudents.map(s => s.class))), [allStudents]);
-  const uniqueSections = useMemo(() => Array.from(new Set(allStudents.map(s => s.section))), [allStudents]);
+  const filteredStudents = useMemo(() => allStudents.filter(s => s.class === selectedClass && s.section === selectedSection), [allStudents, selectedClass, selectedSection]);
+  const selectedStudent = useMemo(() => allStudents.find(s => s.admissionNo === selectedStudentId), [allStudents, selectedStudentId]);
 
-  const filteredStudents = useMemo(() => {
-    return allStudents.filter(s => s.class === selectedClass && s.section === selectedSection);
-  }, [allStudents, selectedClass, selectedSection]);
-
-  const selectedStudent = useMemo(() => 
-    allStudents.find(s => s.admissionNo === selectedStudentId), 
-  [allStudents, selectedStudentId]);
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setPhotoUrl(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,235 +45,169 @@ export const AdminAchievements: React.FC = () => {
       studentName: selectedStudent.name,
       title,
       category,
-      date,
-      description
+      type,
+      date: new Date().toISOString().split('T')[0],
+      description,
+      photoUrl: photoUrl,
+      timestamp: new Date().toISOString(),
+      cheers: 0
     });
 
-    // Reset Form (keep student selected)
     setTitle('');
     setDescription('');
-    setDate(new Date().toISOString().split('T')[0]);
-    alert("Achievement Awarded Successfully!");
+    setPhotoUrl('');
+    alert("Achievement published to Student Dashboard!");
   };
 
-  const getGradient = (cat: string) => {
+  const getTheme = (cat: string) => {
     switch(cat) {
-      case 'Gold': return 'from-yellow-400 to-amber-600 text-white';
-      case 'Silver': return 'from-slate-300 to-slate-500 text-white';
-      case 'Bronze': return 'from-orange-300 to-orange-600 text-white';
-      case 'Special': return 'from-indigo-500 to-purple-600 text-white';
-      default: return 'from-slate-700 to-slate-900 text-white';
+      case 'Gold': return { 
+          bg: 'bg-gradient-to-br from-[#FFF9C4] to-[#FFF176] dark:from-yellow-900/40 dark:to-yellow-600/20',
+          accent: 'text-yellow-800 dark:text-yellow-400',
+          icon: <Crown size={48} className="drop-shadow-md" fill="currentColor" />
+      };
+      case 'Silver': return { 
+          bg: 'bg-gradient-to-br from-[#F5F5F5] to-[#E0E0E0] dark:from-slate-800/60 dark:to-slate-700/40',
+          accent: 'text-slate-700 dark:text-slate-300',
+          icon: <Medal size={48} className="drop-shadow-md" fill="currentColor" />
+      };
+      case 'Bronze': return { 
+          bg: 'bg-gradient-to-br from-[#FFCCBC] to-[#FFAB91] dark:from-orange-900/40 dark:to-orange-700/20',
+          accent: 'text-[#BF360C] dark:text-orange-400',
+          icon: <Award size={48} className="drop-shadow-md" fill="currentColor" />
+      };
+      default: return { 
+          bg: 'bg-gradient-to-br from-[#E1BEE7] to-[#CE93D8] dark:from-purple-900/40 dark:to-purple-700/20',
+          accent: 'text-purple-900 dark:text-purple-300',
+          icon: <Sparkles size={48} className="drop-shadow-md" fill="currentColor" />
+      };
     }
   };
 
   return (
-    <div className="space-y-8 pb-20">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
-           <Award size={32} className="text-yellow-500" /> Student Achievements
-        </h1>
-        <p className="text-slate-500 dark:text-slate-400">Recognize and reward student excellence.</p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div className="space-y-8 pb-32">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
         
-        {/* LEFT COLUMN: ASSIGN FORM */}
-        <div className="lg:col-span-1 space-y-6">
-           <div className="bg-white dark:bg-[#1C1C1E] p-6 rounded-[2rem] shadow-sm border border-slate-100 dark:border-white/5 space-y-6">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Assign Award</h2>
+        {/* Creation Hub */}
+        <div className="space-y-6">
+           <div className="bg-white dark:bg-[#1C1C1E] p-8 rounded-[2.5rem] shadow-apple border border-slate-100 dark:border-white/5 space-y-8">
+              <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
+                 <Trophy className="text-yellow-500" size={32} /> Award Assigner
+              </h2>
               
-              {/* Student Selector */}
-              <div className="space-y-4">
+              <div className="space-y-5">
                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                       <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Class</label>
-                       <div className="relative mt-1">
-                          <select 
-                             value={selectedClass} 
-                             onChange={(e) => { setSelectedClass(e.target.value); setSelectedStudentId(''); }}
-                             className="w-full p-3 bg-slate-50 dark:bg-black/20 rounded-xl appearance-none outline-none font-bold text-slate-900 dark:text-white"
-                          >
-                             {uniqueClasses.map(c => <option key={c} value={c}>{c}</option>)}
-                          </select>
-                          <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
-                       </div>
-                    </div>
-                    <div>
-                       <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Section</label>
-                       <div className="relative mt-1">
-                          <select 
-                             value={selectedSection} 
-                             onChange={(e) => { setSelectedSection(e.target.value); setSelectedStudentId(''); }}
-                             className="w-full p-3 bg-slate-50 dark:bg-black/20 rounded-xl appearance-none outline-none font-bold text-slate-900 dark:text-white"
-                          >
-                             {uniqueSections.map(s => <option key={s} value={s}>{s}</option>)}
-                          </select>
-                          <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
-                       </div>
-                    </div>
-                 </div>
-
-                 <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Student</label>
-                    <div className="relative mt-1">
-                       <select 
-                          value={selectedStudentId} 
-                          onChange={(e) => setSelectedStudentId(e.target.value)}
-                          className="w-full p-3 bg-slate-50 dark:bg-black/20 rounded-xl appearance-none outline-none font-medium text-slate-900 dark:text-white"
-                       >
-                          <option value="">Select Student</option>
-                          {filteredStudents.map(s => <option key={s.admissionNo} value={s.admissionNo}>{s.name} ({s.rollNo})</option>)}
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Class</label>
+                       <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className="w-full p-4 bg-slate-50 dark:bg-black/20 rounded-2xl outline-none font-bold text-slate-900 dark:text-white">
+                          {uniqueClasses.map(c => <option key={c} value={c}>Class {c}</option>)}
                        </select>
-                       <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
+                    </div>
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Section</label>
+                       <select value={selectedSection} onChange={(e) => setSelectedSection(e.target.value)} className="w-full p-4 bg-slate-50 dark:bg-black/20 rounded-2xl outline-none font-bold text-slate-900 dark:text-white">
+                          {['A', 'B', 'C', 'D'].map(s => <option key={s} value={s}>Sec {s}</option>)}
+                       </select>
                     </div>
                  </div>
+
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Recipient</label>
+                    <select value={selectedStudentId} onChange={(e) => setSelectedStudentId(e.target.value)} className="w-full p-4 bg-slate-50 dark:bg-black/20 rounded-2xl outline-none font-bold text-slate-900 dark:text-white">
+                        <option value="">Choose a student...</option>
+                        {filteredStudents.map(s => <option key={s.admissionNo} value={s.admissionNo}>{s.name} (Roll {s.rollNo})</option>)}
+                    </select>
+                 </div>
+
+                 <div className="space-y-3">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Medal Tier</label>
+                    <div className="grid grid-cols-4 gap-2">
+                       {['Gold', 'Silver', 'Bronze', 'Special'].map(cat => (
+                          <button key={cat} onClick={() => setCategory(cat as any)} className={`py-4 rounded-2xl text-[10px] font-black uppercase tracking-tighter transition-all ${category === cat ? 'bg-slate-900 dark:bg-white text-white dark:text-black shadow-xl scale-105' : 'bg-slate-50 dark:bg-white/5 text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10'}`}>
+                             {cat}
+                          </button>
+                       ))}
+                    </div>
+                 </div>
+
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Achievement Title</label>
+                    <input type="text" placeholder="e.g. 1st Place - Inter School Chess" className="w-full p-4 bg-slate-50 dark:bg-black/20 rounded-2xl outline-none font-bold text-slate-900 dark:text-white" value={title} onChange={e => setTitle(e.target.value)} />
+                 </div>
+
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Award Citation (Optional)</label>
+                    <textarea placeholder="Write a short description..." className="w-full p-4 bg-slate-50 dark:bg-black/20 rounded-2xl outline-none font-bold text-slate-900 dark:text-white resize-none h-24" value={description} onChange={e => setDescription(e.target.value)} />
+                 </div>
+
+                 <button onClick={handleSubmit} disabled={!selectedStudent || !title} className="w-full py-5 bg-ios-blue text-white rounded-3xl font-black text-lg shadow-2xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-30">
+                    <Send size={22} /> Unlock Achievement
+                 </button>
               </div>
-
-              {/* Award Details */}
-              {selectedStudent && (
-                 <motion.form 
-                    initial={{ opacity: 0, height: 0 }} 
-                    animate={{ opacity: 1, height: 'auto' }}
-                    onSubmit={handleSubmit}
-                    className="space-y-4 pt-4 border-t border-slate-100 dark:border-white/5"
-                 >
-                    <div>
-                       <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Award Title</label>
-                       <input 
-                          type="text" 
-                          required 
-                          placeholder="e.g. 1st Place - Debate"
-                          value={title}
-                          onChange={(e) => setTitle(e.target.value)}
-                          className="w-full mt-1 p-3 bg-slate-50 dark:bg-black/20 rounded-xl outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white font-bold"
-                       />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                       <div>
-                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Category</label>
-                          <div className="relative mt-1">
-                             <select 
-                                value={category} 
-                                onChange={(e) => setCategory(e.target.value as any)}
-                                className="w-full p-3 bg-slate-50 dark:bg-black/20 rounded-xl appearance-none outline-none font-medium text-slate-900 dark:text-white"
-                             >
-                                <option value="Gold">Gold</option>
-                                <option value="Silver">Silver</option>
-                                <option value="Bronze">Bronze</option>
-                                <option value="Special">Special</option>
-                             </select>
-                             <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
-                          </div>
-                       </div>
-                       <div>
-                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Date</label>
-                          <input 
-                             type="date" 
-                             required 
-                             value={date}
-                             onChange={(e) => setDate(e.target.value)}
-                             className="w-full mt-1 p-3 bg-slate-50 dark:bg-black/20 rounded-xl outline-none text-slate-900 dark:text-white"
-                          />
-                       </div>
-                    </div>
-
-                    <div>
-                       <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Description (Optional)</label>
-                       <textarea 
-                          rows={3} 
-                          placeholder="Details about the achievement..."
-                          value={description}
-                          onChange={(e) => setDescription(e.target.value)}
-                          className="w-full mt-1 p-3 bg-slate-50 dark:bg-black/20 rounded-xl outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white resize-none"
-                       />
-                    </div>
-
-                    <button 
-                       type="submit"
-                       className="w-full py-4 bg-ios-blue text-white font-bold rounded-xl shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2"
-                    >
-                       <Award size={18} /> Assign Achievement
-                    </button>
-                 </motion.form>
-              )}
            </div>
         </div>
 
-        {/* RIGHT COLUMN: PREVIEW & LIST */}
-        <div className="lg:col-span-2 space-y-8">
-           
-           {/* Live Preview Card */}
-           {selectedStudent && (
-              <div className="bg-white dark:bg-[#1C1C1E] p-6 rounded-[2rem] shadow-sm border border-slate-100 dark:border-white/5">
-                 <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Live Preview</h2>
-                 <div className={`relative overflow-hidden rounded-2xl p-6 bg-gradient-to-br ${getGradient(category)} shadow-2xl`}>
-                    <div className="absolute top-0 right-0 p-4 opacity-20">
-                       <Trophy size={120} />
-                    </div>
-                    <div className="relative z-10 flex items-center gap-5">
-                       <div className="w-16 h-16 rounded-full border-4 border-white/30 overflow-hidden bg-white/10 flex-shrink-0">
-                          <img src={selectedStudent.avatar} className="w-full h-full object-cover" alt="" />
-                       </div>
-                       <div>
-                          <div className="inline-block px-2 py-0.5 rounded-md bg-white/20 text-white text-[10px] font-bold uppercase tracking-wider mb-1 backdrop-blur-md">
-                             {category} Award
-                          </div>
-                          <h3 className="text-2xl font-extrabold leading-tight">{title || 'Achievement Title'}</h3>
-                          <p className="text-white/80 text-sm mt-1">{selectedStudent.name}</p>
-                       </div>
-                    </div>
-                 </div>
-              </div>
-           )}
-
-           {/* History List */}
-           <div className="bg-white dark:bg-[#1C1C1E] rounded-[2rem] border border-slate-100 dark:border-white/5 shadow-sm overflow-hidden">
-              <div className="p-6 border-b border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/5 flex justify-between items-center">
-                 <h2 className="text-lg font-bold text-slate-900 dark:text-white">Award History</h2>
-                 <span className="text-xs font-bold text-slate-500 bg-slate-200 dark:bg-white/10 px-2 py-1 rounded-md">Total: {achievements.length}</span>
-              </div>
+        {/* Live Preview Console */}
+        <div className="space-y-6">
+           <div className="bg-white dark:bg-[#1C1C1E] p-10 rounded-[3rem] shadow-apple border border-slate-100 dark:border-white/5 text-center flex flex-col items-center">
+              <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-10">Real-time Visualization</p>
               
-              <div className="max-h-[500px] overflow-y-auto p-4 space-y-3">
-                 {achievements.length > 0 ? (
-                    achievements.map((item) => (
-                       <motion.div 
-                          key={item.id}
-                          layout
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="bg-white dark:bg-[#2C2C2E] p-4 rounded-2xl border border-slate-100 dark:border-white/5 flex items-center gap-4 group"
-                       >
-                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br ${getGradient(item.category)} shadow-md flex-shrink-0`}>
-                             <Trophy size={20} className="text-white" />
-                          </div>
-                          
-                          <div className="flex-1 min-w-0">
-                             <div className="flex justify-between items-start">
-                                <h4 className="font-bold text-slate-900 dark:text-white truncate">{item.title}</h4>
-                                <span className="text-[10px] font-bold text-slate-400">{item.date}</span>
-                             </div>
-                             <p className="text-sm text-slate-600 dark:text-slate-300 truncate">Awarded to <span className="font-bold">{item.studentName}</span></p>
-                             {item.description && <p className="text-xs text-slate-400 truncate mt-0.5">{item.description}</p>}
-                          </div>
+              <AnimatePresence mode="wait">
+                <motion.div 
+                  key={category}
+                  initial={{ scale: 0.8, opacity: 0, rotateY: 90 }}
+                  animate={{ scale: 1, opacity: 1, rotateY: 0 }}
+                  className={`w-72 h-96 rounded-[3rem] ${getTheme(category).bg} shadow-2xl flex flex-col items-center justify-center p-8 border border-white/20 relative overflow-hidden group`}
+                >
+                   {/* Reflective Overlay */}
+                   <div className="absolute inset-0 bg-gradient-to-tr from-white/10 via-transparent to-black/5 pointer-events-none"></div>
+                   <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/20 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700"></div>
 
-                          <button 
-                             onClick={() => deleteAchievement(item.id)}
-                             className="p-2 rounded-full bg-slate-100 dark:bg-white/10 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/20 transition-colors opacity-0 group-hover:opacity-100"
-                          >
-                             <Trash2 size={16} />
-                          </button>
-                       </motion.div>
-                    ))
-                 ) : (
-                    <div className="py-12 text-center text-slate-400">
-                       <Trophy size={48} className="mx-auto mb-3 opacity-20" />
-                       <p>No achievements recorded yet.</p>
-                    </div>
-                 )}
+                   <div className={`${getTheme(category).accent} mb-6 drop-shadow-xl animate-bounce-slow`}>
+                      {getTheme(category).icon}
+                   </div>
+                   
+                   <h4 className="text-2xl font-black text-slate-900 leading-tight mb-3">
+                      {title || "Award Title"}
+                   </h4>
+                   
+                   <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${getTheme(category).accent} bg-white/20 backdrop-blur-sm`}>
+                      {category} Medal
+                   </span>
+                   
+                   <div className="mt-auto pt-6 border-t border-black/5 w-full">
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{selectedStudent?.name || "Recipient Name"}</p>
+                      <p className="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">Azim National School</p>
+                   </div>
+                </motion.div>
+              </AnimatePresence>
+              
+              <div className="mt-8 flex items-center gap-3 bg-slate-50 dark:bg-white/5 px-4 py-3 rounded-2xl">
+                 <Sparkles className="text-yellow-500" size={16} />
+                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">This award will appear in the student's Hall of Fame instantly.</p>
               </div>
            </div>
 
+           {/* Quick History Log */}
+           <div className="bg-white dark:bg-[#1C1C1E] p-6 rounded-[2.5rem] border border-slate-100 dark:border-white/5">
+              <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-5 ml-2">Recent Hall of Fame</h3>
+              <div className="space-y-3">
+                 {achievements.slice(0, 4).map(ach => (
+                    <div key={ach.id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-white/5 rounded-2xl group hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
+                       <div className="flex items-center gap-4">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${getTheme(ach.category).bg}`}>
+                             <Award size={18} className={getTheme(ach.category).accent} />
+                          </div>
+                          <div>
+                             <p className="text-sm font-black text-slate-900 dark:text-white">{ach.title}</p>
+                             <p className="text-[11px] text-slate-500 font-medium">{ach.studentName} • Class {allStudents.find(s => s.admissionNo === ach.studentId)?.class}</p>
+                          </div>
+                       </div>
+                       <button onClick={() => deleteAchievement(ach.id)} className="p-2 text-slate-300 hover:text-red-500 transition-colors"><Trash2 size={18} /></button>
+                    </div>
+                 ))}
+              </div>
+           </div>
         </div>
       </div>
     </div>

@@ -1,7 +1,7 @@
 
 import React, { useContext, useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, Save, ChevronDown, FileSpreadsheet, UploadCloud, AlertTriangle, CheckCircle2, Download, Loader2, Trash2, Phone, X, Lock } from 'lucide-react';
+import { Search, Plus, ChevronDown, FileSpreadsheet, UploadCloud, AlertTriangle, CheckCircle2, Download, Loader2, Trash2, Phone, X, Lock, Camera, ChevronRight } from 'lucide-react';
 import { AuthContext } from '../../App';
 import { Student } from '../../types';
 import { Link } from 'react-router-dom';
@@ -65,15 +65,18 @@ export const AdminStudents: React.FC = () => {
 
   const handleSaveStudent = (studentData: Student) => {
     if (editingStudent) {
-      setAllStudents(allStudents.map(s => s.admissionNo === studentData.admissionNo ? studentData : s));
+      // Use editingStudent.admissionNo to find the original record, 
+      // ensuring updates work even if the Admission No is changed in the form.
+      setAllStudents(prev => prev.map(s => s.admissionNo === editingStudent.admissionNo ? studentData : s));
     } else {
       if (allStudents.some(s => s.admissionNo === studentData.admissionNo)) {
         alert('Error: Admission Number already exists!');
         return;
       }
-      setAllStudents([...allStudents, studentData]);
+      setAllStudents(prev => [...prev, studentData]);
     }
     setShowModal(false);
+    setEditingStudent(null);
   };
 
   const handleDeleteStudent = (e: React.MouseEvent, student: Student) => {
@@ -85,20 +88,17 @@ export const AdminStudents: React.FC = () => {
   };
 
   const handleBulkImport = (newStudents: Student[]) => {
-    // Filter out duplicates based on Admission No
     const uniqueNew = newStudents.filter(ns => !allStudents.some(es => es.admissionNo === ns.admissionNo));
-    
     if (uniqueNew.length < newStudents.length) {
        alert(`Skipped ${newStudents.length - uniqueNew.length} duplicates. Importing ${uniqueNew.length} new records.`);
     }
-
     setAllStudents(prev => [...uniqueNew, ...prev]);
     setShowImportModal(false);
   };
 
   return (
     <div className="space-y-6 pb-24 md:pb-10">
-      {/* Header with Stacked Controls for Mobile */}
+      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Student Directory</h1>
@@ -106,7 +106,7 @@ export const AdminStudents: React.FC = () => {
         </div>
         <div className="flex gap-2 w-full md:w-auto">
           <button onClick={() => setShowImportModal(true)} className="flex-1 md:flex-none justify-center bg-white dark:bg-[#1C1C1E] text-slate-900 dark:text-white border border-slate-200 dark:border-white/10 px-4 py-3 rounded-xl font-bold shadow-sm active:scale-95 transition-transform text-xs flex items-center gap-2">
-             <FileSpreadsheet size={16} className="text-green-600" /> Import / Template
+             <FileSpreadsheet size={16} className="text-green-600" /> Import
           </button>
           {!isTeacher && (
             <button onClick={() => handleOpenModal(null)} className="flex-1 md:flex-none justify-center bg-ios-blue text-white px-5 py-3 rounded-xl font-bold shadow-lg shadow-ios-blue/20 active:scale-95 transition-transform text-xs flex items-center gap-2">
@@ -116,13 +116,12 @@ export const AdminStudents: React.FC = () => {
         </div>
       </div>
 
-      {/* Stacked Filter Bar */}
+      {/* Filter Bar */}
       <div className="bg-white dark:bg-[#1C1C1E] p-4 rounded-[2rem] shadow-sm border border-slate-100 dark:border-white/5 flex flex-col md:flex-row gap-3 items-center">
          <div className="relative w-full">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input type="text" placeholder="Search by name, ID..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full bg-slate-50 dark:bg-black/20 border-none rounded-xl py-3 pl-10 pr-4 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-ios-blue/50 outline-none text-sm" />
          </div>
-         
          <div className="flex gap-2 w-full md:w-auto">
             {isTeacher ? (
                <div className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-50 dark:bg-blue-500/10 rounded-xl text-blue-700 dark:text-blue-300 font-bold border border-blue-100 dark:border-blue-500/20 text-xs">
@@ -137,7 +136,7 @@ export const AdminStudents: React.FC = () => {
          </div>
       </div>
 
-      {/* List View */}
+      {/* List */}
       <div className="space-y-3">
         {filteredStudents.map((student, index) => (
           <motion.div
@@ -163,10 +162,7 @@ export const AdminStudents: React.FC = () => {
              </Link>
              
              <div className="flex items-center gap-2 relative z-10 flex-shrink-0">
-                <a href={`tel:${student.mobile}`} onClick={(e) => e.stopPropagation()} className="w-9 h-9 rounded-full bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-400 hover:text-ios-green hover:bg-green-50 dark:hover:bg-green-500/20 transition-colors"><Phone size={16} /></a>
-                {!isTeacher && (
-                  <button onClick={(e) => handleDeleteStudent(e, student)} className="w-9 h-9 rounded-full bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/20 transition-colors"><Trash2 size={16} /></button>
-                )}
+                <button onClick={() => handleOpenModal(student)} className="w-9 h-9 rounded-full bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/20 transition-colors"><ChevronRight size={18} /></button>
              </div>
           </motion.div>
         ))}
@@ -181,8 +177,6 @@ export const AdminStudents: React.FC = () => {
   );
 };
 
-// ... (Existing Helpers: StudentFormModal, FilterDropdown, InputField)
-
 const FilterDropdown: React.FC<{ label: string, options: string[], selected: string, onSelect: (value: string) => void }> = ({ label, options, selected, onSelect }) => (
     <div className="relative flex-1">
         <select value={selected} onChange={e => onSelect(e.target.value)} className="appearance-none w-full bg-slate-50 dark:bg-black/20 border-none rounded-xl py-3 px-4 text-slate-900 dark:text-white font-bold text-xs focus:ring-2 focus:ring-ios-blue/50 outline-none cursor-pointer">
@@ -192,72 +186,147 @@ const FilterDropdown: React.FC<{ label: string, options: string[], selected: str
     </div>
 );
 
+// --- NEW IOS-STYLE EDIT LAYOUT ---
+
 export const StudentFormModal: React.FC<{ student: Student | null, onSave: (student: Student) => void, onClose: () => void }> = ({ student, onSave, onClose }) => {
-  const [formData, setFormData] = useState<Partial<Student>>(student || { ...emptyStudent, admissionNo: '', session: "2025-26", stats: { attendance: '100%', grade: 'N/A', rank: 'N/A' }, avatar: 'https://ui-avatars.com/api/?name=New+Student&background=random' });
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => { const { name, value } = e.target; setFormData(prev => ({ ...prev, [name]: value })); };
-  const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave(formData as Student); };
+  const [formData, setFormData] = useState<Partial<Student>>(student || { 
+      ...emptyStudent, 
+      admissionNo: '', 
+      session: "2025-26", 
+      stats: { attendance: '100%', grade: 'N/A', rank: 'N/A' }, 
+      avatar: 'https://ui-avatars.com/api/?name=New+Student&background=random' 
+  });
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => { 
+      const { name, value } = e.target; 
+      setFormData(prev => ({ ...prev, [name]: value })); 
+  };
+
+  const handleSubmit = (e: React.FormEvent) => { 
+      e.preventDefault(); 
+      onSave(formData as Student); 
+  };
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+        if (file.size > 500000) return alert("Image too large. Max 500KB.");
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setFormData(prev => ({ ...prev, profilePic: reader.result as string }));
+        };
+        reader.readAsDataURL(file);
+    }
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative bg-white dark:bg-[#1C1C1E] w-full max-w-lg rounded-[2rem] shadow-xl flex flex-col max-h-[90vh]">
-        <div className="p-5 border-b border-slate-100 dark:border-white/10 flex justify-between items-center">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white">{student ? 'Edit Student' : 'Add Student'}</h2>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/10"><X size={20} /></button>
+      
+      <motion.div 
+        initial={{ y: "100%" }} 
+        animate={{ y: 0 }} 
+        exit={{ y: "100%" }} 
+        className="relative bg-[#F2F2F7] dark:bg-black w-full max-w-lg h-[100dvh] sm:h-[90vh] rounded-none sm:rounded-[2rem] flex flex-col overflow-hidden shadow-2xl"
+      >
+        {/* Fixed Header */}
+        <div className="px-4 py-3 bg-white dark:bg-[#1C1C1E] border-b border-slate-200 dark:border-white/10 flex justify-between items-center shrink-0 z-20">
+          <button onClick={onClose} className="text-ios-blue text-base font-normal hover:opacity-70 transition-opacity px-2">Cancel</button>
+          <h2 className="text-base font-bold text-slate-900 dark:text-white">{student ? 'Edit Student' : 'New Student'}</h2>
+          <button onClick={handleSubmit} className="text-ios-blue text-base font-bold hover:opacity-70 transition-opacity px-2">Done</button>
         </div>
-        <form onSubmit={handleSubmit} className="p-5 overflow-y-auto space-y-4 flex-1">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="md:col-span-2"><InputField label="Admission No" name="admissionNo" value={formData.admissionNo || ''} onChange={handleChange} /></div>
-            <InputField label="Name" name="name" value={formData.name || ''} onChange={handleChange} />
-            <div className="grid grid-cols-2 gap-2">
-                <InputField label="Class" name="class" value={formData.class || ''} onChange={handleChange} />
-                <InputField label="Sec" name="section" value={formData.section || ''} onChange={handleChange} />
-            </div>
-            <InputField label="Roll No" name="rollNo" value={formData.rollNo || ''} onChange={handleChange} />
-            
-            {/* Gender Select */}
-            <div className="space-y-1">
-               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Gender</label>
-               <select name="gender" value={formData.gender || 'Male'} onChange={handleChange} className="w-full p-3 rounded-xl bg-slate-50 dark:bg-black/20 border-none outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white font-medium text-sm">
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-               </select>
-            </div>
-
-            <InputField label="Mobile" name="mobile" value={formData.mobile || ''} onChange={handleChange} />
-            <InputField label="Father" name="fatherName" value={formData.fatherName || ''} onChange={handleChange} />
-            <InputField label="Mother" name="motherName" value={formData.motherName || ''} onChange={handleChange} />
-            
-            <div className="md:col-span-2">
-               <InputField label="Address" name="address" value={formData.address || ''} onChange={handleChange} />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-2">
-               <InputField label="DOB (YYYY-MM-DD)" name="dob" value={formData.dob || ''} onChange={handleChange} />
-               <InputField label="Blood Group" name="bloodGroup" value={formData.bloodGroup || ''} onChange={handleChange} />
-            </div>
-
-            {/* New Fields */}
-            <div className="grid grid-cols-2 gap-2">
-               <InputField label="Religion" name="religion" value={formData.religion || ''} onChange={handleChange} />
-               <InputField label="Category" name="category" value={formData.category || ''} onChange={handleChange} />
-            </div>
+        
+        {/* Scrollable Body */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-6">
+          
+          {/* Photo Section */}
+          <div className="flex flex-col items-center gap-3 pt-2">
+             <div onClick={() => fileInputRef.current?.click()} className="relative w-24 h-24 rounded-full overflow-hidden shadow-md cursor-pointer group bg-slate-200 dark:bg-white/10">
+                <img src={formData.profilePic || formData.avatar} className="w-full h-full object-cover" alt="" />
+                <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                   <Camera className="text-white" size={24} />
+                </div>
+             </div>
+             <button onClick={() => fileInputRef.current?.click()} className="text-ios-blue text-sm font-semibold">
+                {formData.profilePic ? 'Change Photo' : 'Add Photo'}
+             </button>
+             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handlePhotoUpload} />
           </div>
-        </form>
-        <div className="p-5 border-t border-slate-100 dark:border-white/10 flex gap-3">
-            <button onClick={onClose} className="flex-1 py-3 rounded-xl font-bold bg-slate-100 dark:bg-white/10 text-slate-500">Cancel</button>
-            <button onClick={handleSubmit} className="flex-1 py-3 rounded-xl font-bold bg-ios-blue text-white shadow-lg flex items-center justify-center gap-2"><Save size={18} /> Save</button>
+
+          {/* Form Sections */}
+          <div className="space-y-6 pb-20">
+             
+             <Section title="ACADEMIC IDENTITY">
+                <FormInput label="Full Name" name="name" value={formData.name} onChange={handleChange} placeholder="Required" />
+                <FormInput label="Admission No" name="admissionNo" value={formData.admissionNo} onChange={handleChange} placeholder="Required" />
+                <FormInput label="Roll No" name="rollNo" value={formData.rollNo} onChange={handleChange} placeholder="Required" />
+                <div className="flex divide-x divide-slate-100 dark:divide-white/5">
+                   <FormInput label="Class" name="class" value={formData.class} onChange={handleChange} placeholder="X" className="w-1/2" />
+                   <FormInput label="Section" name="section" value={formData.section} onChange={handleChange} placeholder="A" className="w-1/2" />
+                </div>
+             </Section>
+
+             <Section title="PERSONAL INFO">
+                <div className="flex items-center justify-between p-3 pl-4 pr-3">
+                   <label className="text-sm font-medium text-slate-900 dark:text-white">Gender</label>
+                   <select name="gender" value={formData.gender} onChange={handleChange} className="bg-transparent text-slate-600 dark:text-slate-300 text-sm outline-none text-right appearance-none pr-4">
+                      <option>Male</option><option>Female</option><option>Other</option>
+                   </select>
+                </div>
+                <FormInput label="Date of Birth" name="dob" type="date" value={formData.dob} onChange={handleChange} />
+                <FormInput label="Blood Group" name="bloodGroup" value={formData.bloodGroup} onChange={handleChange} placeholder="e.g. O+" />
+                <FormInput label="Religion" name="religion" value={formData.religion} onChange={handleChange} placeholder="General" />
+                <FormInput label="Category" name="category" value={formData.category} onChange={handleChange} placeholder="General" />
+             </Section>
+
+             <Section title="FAMILY & CONTACT">
+                <FormInput label="Father" name="fatherName" value={formData.fatherName} onChange={handleChange} />
+                <FormInput label="Mother" name="motherName" value={formData.motherName} onChange={handleChange} />
+                <FormInput label="Mobile" name="mobile" type="tel" value={formData.mobile} onChange={handleChange} />
+             </Section>
+
+             <Section title="ADDRESS">
+                <div className="p-3">
+                   <textarea 
+                      name="address" 
+                      value={formData.address} 
+                      onChange={handleChange} 
+                      rows={3} 
+                      placeholder="Street address, City, State..." 
+                      className="w-full bg-transparent outline-none text-sm text-slate-700 dark:text-slate-300 placeholder-slate-400 resize-none"
+                   />
+                </div>
+             </Section>
+
+          </div>
         </div>
       </motion.div>
     </div>
   );
 };
 
-const InputField: React.FC<{ label: string, name: string, value: string, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }> = ({ label, name, value, onChange }) => (
-  <div className="space-y-1">
-    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{label}</label>
-    <input type="text" name={name} value={value} onChange={onChange} required className="w-full p-3 rounded-xl bg-slate-50 dark:bg-black/20 border-none outline-none focus:ring-2 focus:ring-ios-blue/50 text-slate-900 dark:text-white font-medium text-sm" />
+const Section: React.FC<{ title?: string, children: React.ReactNode }> = ({ title, children }) => (
+  <div>
+    {title && <h3 className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2 ml-4">{title}</h3>}
+    <div className="bg-white dark:bg-[#1C1C1E] rounded-xl overflow-hidden border border-slate-200 dark:border-white/5 shadow-sm divide-y divide-slate-100 dark:divide-white/5">
+      {children}
+    </div>
+  </div>
+);
+
+const FormInput: React.FC<{ label: string, value: any, onChange: any, name: string, type?: string, placeholder?: string, className?: string }> = ({ label, value, onChange, name, type = "text", placeholder, className }) => (
+  <div className={`flex items-center p-3 pl-4 ${className || ''}`}>
+    <label className="w-28 text-sm font-medium text-slate-900 dark:text-white shrink-0">{label}</label>
+    <input 
+      type={type}
+      name={name}
+      value={value || ''}
+      onChange={onChange}
+      placeholder={placeholder}
+      className="flex-1 bg-transparent border-none outline-none text-right sm:text-left text-sm text-slate-600 dark:text-slate-300 placeholder-slate-300 min-w-0"
+    />
   </div>
 );
 
@@ -280,7 +349,6 @@ const BulkImportModal: React.FC<{ onImport: (data: Student[]) => void, onClose: 
     const processImport = () => {
         if (preview.length === 0) return;
         const newStudents: Student[] = preview.map((row: any, i) => {
-            // Helper to get value ignoring case
             const getVal = (key: string) => {
                const foundKey = Object.keys(row).find(k => k.toLowerCase() === key.toLowerCase());
                return foundKey ? row[foundKey] : '';
@@ -302,7 +370,6 @@ const BulkImportModal: React.FC<{ onImport: (data: Student[]) => void, onClose: 
                address: getVal('address') || '',
                religion: getVal('religion') || 'General',
                category: getVal('category') || 'General',
-               // Default values for system fields
                session: "2025-26",
                stats: { attendance: '0%', grade: 'N/A', rank: 'N/A' },
                avatar: `https://ui-avatars.com/api/?name=${getVal('name') || 'User'}&background=random`,
@@ -310,37 +377,17 @@ const BulkImportModal: React.FC<{ onImport: (data: Student[]) => void, onClose: 
             };
         });
         
-        // Filter empty rows if any important field is missing (optional, but good practice)
-        const validStudents = newStudents.filter(s => s.name !== 'Unknown' && s.admissionNo);
-        
-        onImport(validStudents);
+        onImport(newStudents.filter(s => s.name !== 'Unknown' && s.admissionNo));
     };
 
     const downloadTemplate = () => {
-        // Full headers based on Student type
-        const headers = [
-            "admissionNo", "name", "class", "section", "rollNo", 
-            "dob", "gender", "bloodGroup", "fatherName", "motherName", 
-            "mobile", "address", "religion", "category"
-        ];
-        
-        // Example row
-        const exampleRow = [
-            "ANS/2025/101", "John Doe", "X", "A", "1", 
-            "2010-05-15", "Male", "B+", "Robert Doe", "Mary Doe", 
-            "9876543210", "123 Main St, City", "Christian", "General"
-        ];
-
-        const csvContent = [
-            headers.join(','),
-            exampleRow.join(',')
-        ].join('\n');
-
+        const headers = [ "admissionNo", "name", "class", "section", "rollNo", "dob", "gender", "bloodGroup", "fatherName", "motherName", "mobile", "address", "religion", "category" ];
+        const csvContent = headers.join(',');
         const blob = new Blob([csvContent], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = "student_full_import_template.csv";
+        a.download = "student_import_template.csv";
         a.click();
     };
 
@@ -356,7 +403,7 @@ const BulkImportModal: React.FC<{ onImport: (data: Student[]) => void, onClose: 
                 <div className="flex gap-4">
                     <button onClick={downloadTemplate} className="flex-1 py-3 border-2 border-dashed border-slate-300 dark:border-white/10 rounded-xl font-bold text-slate-500 hover:border-blue-500 hover:text-blue-500 transition-colors flex flex-col items-center justify-center gap-2">
                         <Download size={20} />
-                        <span className="text-xs">Download Full Template</span>
+                        <span className="text-xs">Download Template</span>
                     </button>
                     <div className="flex-1 relative">
                         <input type="file" accept=".csv" className="absolute inset-0 opacity-0 cursor-pointer z-10" onChange={handleFile} ref={fileRef} />
@@ -366,15 +413,6 @@ const BulkImportModal: React.FC<{ onImport: (data: Student[]) => void, onClose: 
                         </div>
                     </div>
                 </div>
-
-                {preview.length > 0 && (
-                    <div className="bg-slate-50 dark:bg-black/20 p-4 rounded-xl text-xs font-mono max-h-32 overflow-y-auto">
-                        <p className="font-bold mb-2 text-slate-500">Preview (First 3 rows):</p>
-                        {preview.slice(0,3).map((r,i) => (
-                            <div key={i} className="truncate mb-1">{JSON.stringify(r)}</div>
-                        ))}
-                    </div>
-                )}
 
                 <button onClick={processImport} disabled={preview.length === 0} className="w-full py-4 bg-ios-blue text-white font-bold rounded-xl shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
                     Import Students

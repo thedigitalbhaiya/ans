@@ -1,18 +1,29 @@
 
-import React, { useContext } from 'react';
+import React, { useContext, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Users, ChevronRight, ArrowLeft } from 'lucide-react';
 import { AuthContext } from '../../App';
 import { useNavigate } from 'react-router-dom';
 
 export const ProfileSelector: React.FC = () => {
-  const { availableProfiles, selectProfile } = useContext(AuthContext);
+  const { availableProfiles, selectProfile, isLoggedIn } = useContext(AuthContext);
   const navigate = useNavigate();
+
+  // If already logged in, no need to be here unless choosing a sibling
+  useEffect(() => {
+    if (isLoggedIn && (!availableProfiles || availableProfiles.length <= 1)) {
+        navigate('/');
+    }
+  }, [isLoggedIn, availableProfiles, navigate]);
 
   // If accessed directly without data, redirect to login
   if (!availableProfiles || availableProfiles.length === 0) {
-    navigate('/profile');
-    return null;
+    return (
+      <div className="min-h-screen bg-ios-bg dark:bg-black flex flex-col items-center justify-center p-6 text-center">
+         <h1 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Session Expired</h1>
+         <button onClick={() => navigate('/profile')} className="text-ios-blue font-bold">Go to Login</button>
+      </div>
+    );
   }
 
   return (
@@ -23,7 +34,7 @@ export const ProfileSelector: React.FC = () => {
         className="max-w-md w-full"
       >
         <div className="text-center mb-8">
-           <div className="w-20 h-20 bg-white dark:bg-[#1C1C1E] rounded-[2rem] flex items-center justify-center shadow-xl mx-auto mb-6">
+           <div className="w-20 h-20 bg-white dark:bg-[#1C1C1E] rounded-[2.5rem] flex items-center justify-center shadow-xl mx-auto mb-6">
               <Users size={32} className="text-ios-blue" />
            </div>
            <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">Who is studying?</h1>
@@ -34,7 +45,9 @@ export const ProfileSelector: React.FC = () => {
            {availableProfiles.map((student, index) => (
              <motion.button
                key={student.admissionNo}
-               onClick={() => selectProfile(student.admissionNo)}
+               onClick={() => {
+                  selectProfile(student.admissionNo);
+               }}
                initial={{ opacity: 0, x: -20 }}
                animate={{ opacity: 1, x: 0 }}
                transition={{ delay: index * 0.1 }}
